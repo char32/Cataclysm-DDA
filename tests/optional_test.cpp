@@ -1,4 +1,5 @@
-#include <utility>
+#include <new>
+#include <type_traits>
 
 #include "catch/catch.hpp"
 #include "optional.h"

@@ -1,6 +1,10 @@
 #include <clocale>
+#include <clocale>
+#include <iosfwd>
 #include <stdexcept>
 #include <string>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 #include "catacharset.h"

@@ -2,12 +2,14 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <functional>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
 
+#include "bodypart.h"
 #include "character.h"
 #include "character_martial_arts.h"
 #include "color.h"
@@ -16,7 +18,7 @@
 #include "debug.h"
 #include "effect.h"
 #include "enums.h"
-#include "game.h"
+#include "game_constants.h"
 #include "generic_factory.h"
 #include "input.h"
 #include "item.h"
@@ -25,12 +27,9 @@
 #include "map.h"
 #include "output.h"
 #include "pimpl.h"
-#include "player.h"
-#include "pldata.h"
 #include "point.h"
 #include "skill.h"
 #include "string_formatter.h"
-#include "string_id.h"
 #include "translations.h"
 #include "ui_manager.h"
 #include "value_ptr.h"
@@ -41,7 +40,7 @@ static const bionic_id bio_armor_arms( "bio_armor_arms" );
 static const bionic_id bio_armor_legs( "bio_armor_legs" );
 static const bionic_id bio_cqb( "bio_cqb" );
 
-static const std::string flag_UNARMED_WEAPON( "UNARMED_WEAPON" );
+static const flag_id json_flag_UNARMED_WEAPON( "UNARMED_WEAPON" );
 
 namespace
 {
@@ -135,7 +134,7 @@ void ma_requirements::load( const JsonObject &jo, const std::string & )
     optional( jo, was_loaded, "wall_adjacent", wall_adjacent, false );
 
     optional( jo, was_loaded, "req_buffs", req_buffs, auto_flags_reader<mabuff_id> {} );
-    optional( jo, was_loaded, "req_flags", req_flags, auto_flags_reader<> {} );
+    optional( jo, was_loaded, "req_flags", req_flags, auto_flags_reader<flag_id> {} );
 
     optional( jo, was_loaded, "skill_requirements", min_skill, ma_skill_reader {} );
     optional( jo, was_loaded, "weapon_damage_requirements", min_damage, ma_weapon_damage_reader {} );
@@ -144,12 +143,12 @@ void ma_requirements::load( const JsonObject &jo, const std::string & )
 void ma_technique::load( const JsonObject &jo, const std::string &src )
 {
     mandatory( jo, was_loaded, "name", name );
-    optional( jo, was_loaded, "description", description, "" );
+    optional( jo, was_loaded, "description", description, translation() );
 
     if( jo.has_member( "messages" ) ) {
         JsonArray jsarr = jo.get_array( "messages" );
-        avatar_message = jsarr.get_string( 0 );
-        npc_message = jsarr.get_string( 1 );
+        jsarr.read( 0, avatar_message );
+        jsarr.read( 1, npc_message );
     }
 
     optional( jo, was_loaded, "crit_tec", crit_tec, false );
@@ -338,7 +337,7 @@ std::vector<matype_id> autolearn_martialart_types()
 
 static void check( const ma_requirements &req, const std::string &display_text )
 {
-    for( auto &r : req.req_buffs ) {
+    for( const mabuff_id &r : req.req_buffs ) {
         if( !r.is_valid() ) {
             debugmsg( "ma buff %s of %s does not exist", r.c_str(), display_text );
         }
@@ -380,7 +379,7 @@ void check_martialarts()
 class ma_buff_effect_type : public effect_type
 {
     public:
-        ma_buff_effect_type( const ma_buff &buff ) {
+        explicit ma_buff_effect_type( const ma_buff &buff ) {
             id = buff.get_effect_id();
             max_intensity = buff.max_stacks;
             // add_effect add the duration to an existing effect, but it must never be
@@ -393,13 +392,13 @@ class ma_buff_effect_type : public effect_type
             int_decay_step = -1;
             int_decay_tick = 1;
             int_dur_factor = 0_turns;
-            name.push_back( to_translation( buff.name ) );
+            name.push_back( buff.name );
             desc.push_back( buff.description );
             rating = e_good;
         }
 };
 
-void finialize_martial_arts()
+void finalize_martial_arts()
 {
     // This adds an effect type for each ma_buff, so we can later refer to it and don't need a
     // redundant definition of those effects in json.
@@ -450,13 +449,13 @@ bool ma_requirements::is_valid_character( const Character &u ) const
     bool cqb = u.has_active_bionic( bio_cqb );
     // There are 4 different cases of "armedness":
     // Truly unarmed, unarmed weapon, style-allowed weapon, generic weapon
-    bool melee_style = u.martial_arts_data.selected_strictly_melee();
+    bool melee_style = u.martial_arts_data->selected_strictly_melee();
     bool is_armed = u.is_armed();
-    bool unarmed_weapon = is_armed && u.used_weapon().has_flag( flag_UNARMED_WEAPON );
-    bool forced_unarmed = u.martial_arts_data.selected_force_unarmed();
+    bool unarmed_weapon = is_armed && u.used_weapon().has_flag( json_flag_UNARMED_WEAPON );
+    bool forced_unarmed = u.martial_arts_data->selected_force_unarmed();
     bool weapon_ok = is_valid_weapon( u.weapon );
-    bool style_weapon = u.martial_arts_data.selected_has_weapon( u.weapon.typeId() );
-    bool all_weapons = u.martial_arts_data.selected_allow_melee();
+    bool style_weapon = u.martial_arts_data->selected_has_weapon( u.weapon.typeId() );
+    bool all_weapons = u.martial_arts_data->selected_allow_melee();
 
     bool unarmed_ok = !is_armed || ( unarmed_weapon && unarmed_weapons_allowed );
     bool melee_ok = melee_allowed && weapon_ok && ( style_weapon || all_weapons );
@@ -468,7 +467,7 @@ bool ma_requirements::is_valid_character( const Character &u ) const
         return false;
     }
 
-    if( wall_adjacent && !g->m.is_wall_adjacent( u.pos() ) ) {
+    if( wall_adjacent && !get_map().is_wall_adjacent( u.pos() ) ) {
         return false;
     }
 
@@ -483,7 +482,7 @@ bool ma_requirements::is_valid_character( const Character &u ) const
 
 bool ma_requirements::is_valid_weapon( const item &i ) const
 {
-    for( const std::string &flag : req_flags ) {
+    for( const flag_id &flag : req_flags ) {
         if( !i.has_flag( flag ) ) {
             return false;
         }
@@ -509,7 +508,13 @@ std::string ma_requirements::get_description( bool buff ) const
 
         dump += enumerate_as_string( min_skill.begin(),
         min_skill.end(), []( const std::pair<skill_id, int>  &pr ) {
-            return string_format( "%s: <stat>%d</stat>", pr.first->name(), pr.second );
+            Character &u = get_player_character();
+            int player_skill = u.get_skill_level( skill_id( pr.first ) );
+            if( u.has_active_bionic( bio_cqb ) ) {
+                player_skill = BIO_CQB_LEVEL;
+            }
+            return string_format( "%s: <stat>%d</stat>/<stat>%d</stat>", pr.first->name(), player_skill,
+                                  pr.second );
         }, enumeration_conjunction::none ) + "\n";
     }
 
@@ -530,7 +535,7 @@ std::string ma_requirements::get_description( bool buff ) const
         dump += _( "<bold>Requires:</bold> " );
 
         dump += enumerate_as_string( req_buffs.begin(), req_buffs.end(), []( const mabuff_id & bid ) {
-            return _( bid->name );
+            return bid->name.translated();
         }, enumeration_conjunction::none ) + "\n";
     }
 
@@ -646,6 +651,10 @@ int ma_buff::hit_bonus( const Character &u ) const
 {
     return bonuses.get_flat( u, affected_stat::HIT );
 }
+int ma_buff::critical_hit_chance_bonus( const Character &u ) const
+{
+    return bonuses.get_flat( u, affected_stat::CRITICAL_HIT_CHANCE );
+}
 int ma_buff::dodge_bonus( const Character &u ) const
 {
     return bonuses.get_flat( u, affected_stat::DODGE );
@@ -653,6 +662,10 @@ int ma_buff::dodge_bonus( const Character &u ) const
 int ma_buff::block_bonus( const Character &u ) const
 {
     return bonuses.get_flat( u, affected_stat::BLOCK );
+}
+int ma_buff::block_effectiveness_bonus( const Character &u ) const
+{
+    return bonuses.get_flat( u, affected_stat::BLOCK_EFFECTIVENESS );
 }
 int ma_buff::speed_bonus( const Character &u ) const
 {
@@ -691,7 +704,7 @@ bool ma_buff::can_melee() const
 std::string ma_buff::get_description( bool passive ) const
 {
     std::string dump;
-    dump += string_format( _( "<bold>Buff technique:</bold> %s" ), _( name ) ) + "\n";
+    dump += string_format( _( "<bold>Buff technique:</bold> %s" ), name ) + "\n";
 
     std::string temp = bonuses.get_description();
     if( !temp.empty() ) {
@@ -846,7 +859,8 @@ bool martialart::weapon_valid( const item &it ) const
         return true;
     }
 
-    if( !strictly_unarmed && !strictly_melee && !it.is_null() && it.has_flag( "UNARMED_WEAPON" ) ) {
+    if( !strictly_unarmed && !strictly_melee && !it.is_null() &&
+        it.has_flag( json_flag_UNARMED_WEAPON ) ) {
         return true;
     }
 
@@ -855,12 +869,12 @@ bool martialart::weapon_valid( const item &it ) const
 
 std::string martialart::get_initiate_avatar_message() const
 {
-    return initiate[0];
+    return initiate[0].translated();
 }
 
 std::string martialart::get_initiate_npc_message() const
 {
-    return initiate[1];
+    return initiate[1].translated();
 }
 // Player stuff
 
@@ -925,24 +939,32 @@ ma_technique character_martial_arts::get_grab_break_tec( const item &weap ) cons
     return tec;
 }
 
-bool player::can_grab_break( const item &weap ) const
+bool Character::can_grab_break( const item &weap ) const
 {
     if( !has_grab_break_tec() ) {
         return false;
     }
 
-    ma_technique tec = martial_arts_data.get_grab_break_tec( weap );
+    ma_technique tec;
+    for( const matec_id &technique : martial_arts_data->get_all_techniques( weap ) ) {
+        if( technique->grab_break ) {
+            tec = technique.obj();
+            if( tec.is_valid_character( *this ) ) {
+                return true;
+            }
+        }
+    }
 
-    return tec.is_valid_character( *this );
+    return false;
 }
 
 bool Character::can_miss_recovery( const item &weap ) const
 {
-    if( !martial_arts_data.has_miss_recovery_tec( weap ) ) {
+    if( !martial_arts_data->has_miss_recovery_tec( weap ) ) {
         return false;
     }
 
-    ma_technique tec = martial_arts_data.get_miss_recovery_tec( weap );
+    ma_technique tec = martial_arts_data->get_miss_recovery_tec( weap );
 
     return tec.is_valid_character( *this );
 }
@@ -974,7 +996,8 @@ bool character_martial_arts::can_arm_block( const Character &owner ) const
                             skill_unarmed );
 
     // Success conditions.
-    if( !owner.is_limb_broken( hp_arm_l ) || !owner.is_limb_broken( hp_arm_r ) ) {
+    if( !owner.is_limb_broken( bodypart_id( "arm_l" ) ) ||
+        !owner.is_limb_broken( bodypart_id( "arm_r" ) ) ) {
         if( unarmed_skill >= ma.arm_block ) {
             return true;
         } else if( ma.arm_block_with_bio_armor_arms && owner.has_bionic( bio_armor_arms ) ) {
@@ -1071,15 +1094,23 @@ static bool search_ma_buff_effect( const C &container, F f )
 // bonuses
 float Character::mabuff_tohit_bonus() const
 {
-    float ret = 0;
+    float ret = 0.0f;
     accumulate_ma_buff_effects( *effects, [&ret, this]( const ma_buff & b, const effect & ) {
         ret += b.hit_bonus( *this );
     } );
     return ret;
 }
+float Character::mabuff_critical_hit_chance_bonus() const
+{
+    float ret = 0.0f;
+    accumulate_ma_buff_effects( *effects, [&ret, this]( const ma_buff & b, const effect & d ) {
+        ret += d.get_intensity() * b.critical_hit_chance_bonus( *this );
+    } );
+    return ret;
+}
 float Character::mabuff_dodge_bonus() const
 {
-    float ret = 0;
+    float ret = 0.0f;
     accumulate_ma_buff_effects( *effects, [&ret, this]( const ma_buff & b, const effect & d ) {
         ret += d.get_intensity() * b.dodge_bonus( *this );
     } );
@@ -1090,6 +1121,14 @@ int Character::mabuff_block_bonus() const
     int ret = 0;
     accumulate_ma_buff_effects( *effects, [&ret, this]( const ma_buff & b, const effect & d ) {
         ret += d.get_intensity() * b.block_bonus( *this );
+    } );
+    return ret;
+}
+int Character::mabuff_block_effectiveness_bonus( ) const
+{
+    int ret = 0;
+    accumulate_ma_buff_effects( *effects, [&ret, this]( const ma_buff & b, const effect & d ) {
+        ret += d.get_intensity() * b.block_effectiveness_bonus( *this );
     } );
     return ret;
 }
@@ -1159,14 +1198,14 @@ bool Character::is_quiet() const
         return b.is_quiet();
     } );
 }
-bool player::is_stealthy() const
+bool Character::is_stealthy() const
 {
     return search_ma_buff_effect( *effects, []( const ma_buff & b, const effect & ) {
         return b.is_stealthy();
     } );
 }
 
-bool player::can_melee() const
+bool Character::can_melee() const
 {
     return search_ma_buff_effect( *effects, []( const ma_buff & b, const effect & ) {
         return b.can_melee();
@@ -1178,6 +1217,11 @@ bool Character::has_mabuff( const mabuff_id &id ) const
     return search_ma_buff_effect( *effects, [&id]( const ma_buff & b, const effect & ) {
         return b.id == id;
     } );
+}
+
+bool Character::has_grab_break_tec() const
+{
+    return martial_arts_data->has_grab_break_tec();
 }
 
 bool character_martial_arts::has_martialart( const matype_id &ma ) const
@@ -1193,7 +1237,7 @@ void character_martial_arts::add_martialart( const matype_id &ma_id )
     ma_styles.emplace_back( ma_id );
 }
 
-bool player::can_autolearn( const matype_id &ma_id ) const
+bool Character::can_autolearn( const matype_id &ma_id ) const
 {
     if( ma_id.obj().autolearn_skills.empty() ) {
         return false;
@@ -1215,7 +1259,7 @@ void character_martial_arts::martialart_use_message( const Character &owner ) co
 {
     martialart ma = style_selected.obj();
     if( ma.force_unarmed || ma.weapon_valid( owner.weapon ) ) {
-        owner.add_msg_if_player( m_info, _( ma.get_initiate_avatar_message() ) );
+        owner.add_msg_if_player( m_info, "%s", ma.get_initiate_avatar_message() );
     } else if( ma.strictly_melee && !owner.is_armed() ) {
         owner.add_msg_if_player( m_bad, _( "%s cannot be used unarmed." ), ma.name );
     } else if( ma.strictly_unarmed && owner.is_armed() ) {
@@ -1410,13 +1454,18 @@ bool ma_style_callback::key( const input_context &ctxt, const input_event &event
 
         if( ma.arm_block_with_bio_armor_arms || ma.arm_block != 99 ||
             ma.leg_block_with_bio_armor_legs || ma.leg_block != 99 ) {
+            Character &u = get_player_character();
+            int unarmed_skill =  u.get_skill_level( skill_unarmed );
+            if( u.has_active_bionic( bio_cqb ) ) {
+                unarmed_skill = BIO_CQB_LEVEL;
+            }
             if( ma.arm_block_with_bio_armor_arms ) {
                 buffer += _( "You can <info>arm block</info> by installing the <info>Arms Alloy Plating CBM</info>" );
                 buffer += "\n";
             } else if( ma.arm_block != 99 ) {
                 buffer += string_format(
-                              _( "You can <info>arm block</info> at <info>unarmed combat:</info> <stat>%s</stat>" ),
-                              ma.arm_block ) + "\n";
+                              _( "You can <info>arm block</info> at <info>unarmed combat:</info> <stat>%s</stat>/<stat>%s</stat>" ),
+                              unarmed_skill, ma.arm_block ) + "\n";
             }
 
             if( ma.leg_block_with_bio_armor_legs ) {
@@ -1424,8 +1473,8 @@ bool ma_style_callback::key( const input_context &ctxt, const input_event &event
                 buffer += "\n";
             } else if( ma.leg_block != 99 ) {
                 buffer += string_format(
-                              _( "You can <info>leg block</info> at <info>unarmed combat:</info> <stat>%s</stat>" ),
-                              ma.leg_block );
+                              _( "You can <info>leg block</info> at <info>unarmed combat:</info> <stat>%s</stat>/<stat>%s</stat>" ),
+                              unarmed_skill, ma.leg_block );
                 buffer += "\n";
             }
             buffer += "--\n";
@@ -1456,14 +1505,23 @@ bool ma_style_callback::key( const input_context &ctxt, const input_event &event
 
         for( const auto &tech : ma.techniques ) {
             buffer += string_format( _( "<header>Technique:</header> <bold>%s</bold>   " ),
-                                     _( tech.obj().name ) ) + "\n";
+                                     tech.obj().name ) + "\n";
             buffer += tech.obj().get_description() + "--\n";
         }
 
         if( !ma.weapons.empty() ) {
             std::vector<std::string> weapons;
             std::transform( ma.weapons.begin(), ma.weapons.end(),
-                            std::back_inserter( weapons ), []( const itype_id & wid )-> std::string { return item::nname( wid ); } );
+            std::back_inserter( weapons ), []( const itype_id & wid )-> std::string {
+                // Colorize wielded weapon and move it to the front of the list
+                Character &player_character = get_player_character();
+                if( item::nname( wid ) == player_character.weapon.display_name() )
+                {
+                    return colorize( item::nname( wid ) + _( " (wielded)" ), c_light_cyan );
+                } else
+                {
+                    return item::nname( wid );
+                } } );
             // Sorting alphabetically makes it easier to find a specific weapon
             std::sort( weapons.begin(), weapons.end(), localized_compare );
             // This removes duplicate names (e.g. a real weapon and a replica sharing the same name) from the weapon list.
@@ -1508,6 +1566,8 @@ bool ma_style_callback::key( const input_context &ctxt, const input_event &event
         input_context ict;
         ict.register_action( "UP" );
         ict.register_action( "DOWN" );
+        ict.register_action( "PAGE_UP" );
+        ict.register_action( "PAGE_DOWN" );
         ict.register_action( "QUIT" );
         ict.register_action( "HELP_KEYBINDINGS" );
 
@@ -1516,7 +1576,7 @@ bool ma_style_callback::key( const input_context &ctxt, const input_event &event
             fold_and_print_from( w, point( 2, 1 ), width, selected, c_light_gray, text );
             draw_border( w, BORDER_COLOR, string_format( _( " Style: %s " ), ma.name ) );
             draw_scrollbar( w, selected, height, iLines, point_south, BORDER_COLOR, true );
-            wrefresh( w );
+            wnoutrefresh( w );
         } );
 
         do {
@@ -1529,7 +1589,7 @@ bool ma_style_callback::key( const input_context &ctxt, const input_event &event
             }
 
             ui_manager::redraw();
-
+            const int scroll_lines = catacurses::getmaxy( w ) - 4;
             std::string action = ict.handle_input();
 
             if( action == "QUIT" ) {
@@ -1538,6 +1598,10 @@ bool ma_style_callback::key( const input_context &ctxt, const input_event &event
                 selected++;
             } else if( action == "UP" ) {
                 selected--;
+            } else if( action == "PAGE_DOWN" ) {
+                selected += scroll_lines;
+            } else if( action == "PAGE_UP" ) {
+                selected -= scroll_lines;
             }
         } while( true );
     }

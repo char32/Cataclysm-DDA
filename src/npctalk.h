@@ -4,6 +4,7 @@
 
 #include "type_id.h"
 
+class item;
 class npc;
 class time_duration;
 
@@ -70,6 +71,8 @@ void leave( npc & );                 // p becomes indifferent
 void stop_following( npc & );
 void stranger_neutral( npc & );      // p is now neutral towards you
 
+bool drop_stolen_item( item &cur_item, npc &p );
+
 void start_mugging( npc & );
 void player_leaving( npc & );
 
@@ -93,6 +96,8 @@ void clear_overrides( npc &p );
 
 time_duration calc_skill_training_time( const npc &p, const skill_id &skill );
 int calc_skill_training_cost( const npc &p, const skill_id &skill );
+time_duration calc_proficiency_training_time( const npc &, const proficiency_id &proficiency );
+int calc_proficiency_training_cost( const npc &p, const proficiency_id &proficiency );
 time_duration calc_ma_style_training_time( const npc &, const matype_id & /* id */ );
 int calc_ma_style_training_cost( const npc &p, const matype_id & /* id */ );
 #endif // CATA_SRC_NPCTALK_H

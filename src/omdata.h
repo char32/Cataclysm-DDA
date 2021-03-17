@@ -2,37 +2,40 @@
 #ifndef CATA_SRC_OMDATA_H
 #define CATA_SRC_OMDATA_H
 
+#include <array>
 #include <climits>
 #include <cstddef>
 #include <cstdint>
+#include <iosfwd>
 #include <list>
+#include <new>
 #include <set>
-#include <vector>
-#include <array>
 #include <string>
+#include <vector>
 
+#include "assign.h"
 #include "catacharset.h"
 #include "color.h"
 #include "common_types.h"
+#include "coordinates.h"
 #include "enum_bitset.h"
-#include "int_id.h"
+#include "optional.h"
 #include "point.h"
-#include "string_id.h"
 #include "translations.h"
 #include "type_id.h"
-#include "optional.h"
 
-struct city;
 class overmap_land_use_code;
 struct MonsterGroup;
+struct city;
+template <typename E> struct enum_traits;
 
 using overmap_land_use_code_id = string_id<overmap_land_use_code>;
-struct oter_t;
-struct overmap_location;
 class JsonObject;
 class overmap_connection;
-class overmap_special_batch;
 class overmap_special;
+class overmap_special_batch;
+struct oter_t;
+struct overmap_location;
 
 using overmap_special_id = string_id<overmap_special>;
 
@@ -105,8 +108,8 @@ class overmap_land_use_code
         overmap_land_use_code_id id = overmap_land_use_code_id::NULL_ID();
 
         int land_use_code = 0;
-        std::string name;
-        std::string detailed_definition;
+        translation name;
+        translation detailed_definition;
         uint32_t symbol = 0;
         nc_color color = c_black;
 
@@ -163,6 +166,8 @@ enum class oter_flags : int {
     subway_connection,
     lake,
     lake_shore,
+    ravine,
+    ravine_edge,
     generic_loot,
     risk_high,
     risk_low,
@@ -193,7 +198,7 @@ enum class oter_flags : int {
 
 template<>
 struct enum_traits<oter_flags> {
-    static constexpr auto last = oter_flags::num_oter_flags;
+    static constexpr oter_flags last = oter_flags::num_oter_flags;
 };
 
 struct oter_type_t {
@@ -202,7 +207,7 @@ struct oter_type_t {
 
     public:
         string_id<oter_type_t> id;
-        std::string name;               // Untranslated name
+        translation name;
         uint32_t symbol = 0;
         nc_color color = c_black;
         overmap_land_use_code_id land_use_code = overmap_land_use_code_id::NULL_ID();
@@ -257,7 +262,7 @@ struct oter_t {
         oter_str_id id;         // definitive identifier.
 
         oter_t();
-        oter_t( const oter_type_t &type );
+        explicit oter_t( const oter_type_t &type );
         oter_t( const oter_type_t &type, om_direction::type dir );
         oter_t( const oter_type_t &type, size_t line );
 
@@ -269,7 +274,7 @@ struct oter_t {
         oter_id get_rotated( om_direction::type dir ) const;
 
         std::string get_name() const {
-            return _( type->name );
+            return type->name.translated();
         }
 
         std::string get_symbol( const bool from_land_use_code = false ) const {
@@ -349,6 +354,14 @@ struct oter_t {
             return type->has_flag( oter_flags::lake_shore );
         }
 
+        bool is_ravine() const {
+            return type->has_flag( oter_flags::ravine );
+        }
+
+        bool is_ravine_edge() const {
+            return type->has_flag( oter_flags::ravine_edge );
+        }
+
     private:
         om_direction::type dir = om_direction::type::none;
         uint32_t symbol;
@@ -371,7 +384,7 @@ bool operator!=( const oter_id &lhs, const char *rhs );
 // OMSPEC_FREQ determines the length of the side of the square in which each
 // overmap special will be placed.  At OMSPEC_FREQ 6, the overmap is divided
 // into 900 squares; lots of space for interesting stuff!
-#define OMSPEC_FREQ 15
+static constexpr int OMSPEC_FREQ = 15;
 
 struct overmap_special_spawns : public overmap_spawns {
     numeric_interval<int> radius;
@@ -439,7 +452,7 @@ class overmap_special
         /** @returns true if this special requires a city */
         bool requires_city() const;
         /** @returns whether the special at specified tripoint can belong to the specified city. */
-        bool can_belong_to_city( const tripoint &p, const city &cit ) const;
+        bool can_belong_to_city( const tripoint_om_omt &p, const city &cit ) const;
 
         overmap_special_id id;
         std::list<overmap_special_terrain> terrains;
@@ -458,8 +471,6 @@ class overmap_special
         void load( const JsonObject &jo, const std::string &src );
         void finalize();
         void check() const;
-        // Minimum size of the box that can contain whole overmap special
-        box dimensions;
     private:
         // These locations are the default values if ones are not specified for the individual OMTs.
         std::set<string_id<overmap_location>> default_locations;
@@ -499,7 +510,7 @@ void reset();
 
 const std::vector<overmap_special> &get_all();
 
-overmap_special_batch get_default_batch( const point &origin );
+overmap_special_batch get_default_batch( const point_abs_om &origin );
 /**
  * Generates a simple special from a building id.
  */

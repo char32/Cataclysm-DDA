@@ -2,7 +2,7 @@
   {
     "type": "COMESTIBLE",
     "id": "sausage_raw",
-    "name": "raw sausage",
+    "name": { "str": "raw sausage" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": "raw Mannwurst" },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": "raw killbasa" },
@@ -20,7 +20,7 @@
     "description": "A hefty raw sausage, prepared for smoking or cooking.",
     "price": 1600,
     "price_postapoc": 200,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "250 ml",
     "flags": [ "SMOKABLE" ],
     "smoking_result": "sausage",
@@ -30,7 +30,7 @@
   {
     "type": "COMESTIBLE",
     "id": "sausage",
-    "name": "smoked sausage",
+    "name": { "str": "smoked sausage" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": "smoked Mannwurst" },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": "smoked killbasa" },
@@ -48,7 +48,7 @@
   {
     "type": "COMESTIBLE",
     "id": "sausage_cooked",
-    "name": "cooked sausage",
+    "name": { "str": "cooked sausage" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": "cooked Mannwurst" },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": "cooked killbasa" },
@@ -76,7 +76,7 @@
     "calories": 539,
     "description": "A sweet and delicious sausage.  Better eat it fresh.",
     "price": 2400,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "250 ml",
     "price_postapoc": 250,
     "vitamins": [ [ "vitA", 30 ], [ "vitC", 4 ], [ "iron", 22 ], [ "vitB", 36 ] ],
@@ -102,9 +102,9 @@
     "calories": 297,
     "description": "A type of German sausage made of finely chopped meat and meant to be pan fried or roasted.  Better eat it hot and fresh.",
     "price": 1800,
-    "price_postapoc": 1500,
-    "material": "flesh",
-    "volume": "500 ml",
+    "volume": "1500 ml",
+    "//": "volume and weight for a roughly 25cm length, 2.5cm diameter link, estimated",
+    "material": [ "flesh" ],
     "charges": 10,
     "flags": [ "EATEN_HOT" ],
     "fun": 5
@@ -123,7 +123,7 @@
     "description": "A chunk of meat with a coat of royal jelly over it.  It's a lot like a honey-baked ham.",
     "price": 21000,
     "price_postapoc": 4500,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "500 ml",
     "fun": 7,
     "vitamins": [ [ "vitC", 16 ], [ "calcium", 2 ], [ "iron", 69 ], [ "vitB", 778 ] ]
@@ -143,19 +143,20 @@
     "calories": 398,
     "description": "A thick slab of salty cured bacon.  Shelf stable, precooked and ready-to-eat, it tastes better when reheated.",
     "price": 1900,
+    "volume": "100 ml",
+    "//": "I am not sure how much a 'charge' is meant to be, but a slice is around 10mL displacement volume, with a weight of 8g and about 40kcal.  Based this on that.",
     "price_postapoc": 500,
-    "material": "flesh",
-    "volume": "250 ml",
+    "material": [ "flesh" ],
     "charges": 2,
-    "flags": [ "EATEN_HOT" ],
-    "vitamins": [ [ "calcium", 1 ], [ "iron", 5 ], [ "vitB", 39 ] ],
+    "flags": [ "EATEN_HOT", "SMOKED" ],
+    "vitamins": [ [ "calcium", 0 ], [ "iron", 2 ] ],
     "fun": 5
   },
   {
     "id": "sausage_wasteland",
     "copy-from": "sausage_raw",
     "type": "COMESTIBLE",
-    "name": "wasteland sausage",
+    "name": { "str": "wasteland sausage" },
     "description": "Lean sausage made from heavily salt-cured offal, with natural gut casing.  Waste not, want not.",
     "parasites": 0,
     "healthy": 0,
@@ -168,7 +169,7 @@
     "id": "sausage_wasteland_raw",
     "copy-from": "sausage_raw",
     "type": "COMESTIBLE",
-    "name": "raw wasteland sausage",
+    "name": { "str": "raw wasteland sausage" },
     "description": "Lean raw sausage made from heavily salt-cured offal, ready to be smoked.",
     "healthy": 0,
     "quench": -7,
@@ -190,12 +191,43 @@
     "calories": 270,
     "description": "Also known as pork rinds or chicharrones, these are bits of edible fat and skin that have been fried until they are crispy and delicious.",
     "price": 170,
+    "volume": "100 ml",
     "price_postapoc": 500,
-    "material": "flesh",
-    "volume": "250 ml",
+    "material": [ "flesh" ],
     "charges": 4,
     "flags": [ "EATEN_HOT" ],
     "fun": 4
+  },
+  {
+    "type": "COMESTIBLE",
+    "id": "human_cracklins",
+    "name": { "str_sp": "cracklins" },
+    "copy-from": "cracklins",
+    "material": [ "hflesh" ]
+  },
+  {
+    "type": "COMESTIBLE",
+    "id": "mutant_cracklins",
+    "name": { "str_sp": "cracklins" },
+    "copy-from": "cracklins",
+    "material": [ "flesh" ],
+    "vitamins": [ [ "mutant_toxin", 52 ] ]
+  },
+  {
+    "type": "COMESTIBLE",
+    "id": "mutant_human_cracklins",
+    "name": { "str_sp": "cracklins" },
+    "copy-from": "cracklins",
+    "material": [ "hflesh" ],
+    "vitamins": [ [ "mutant_toxin", 52 ] ]
+  },
+  {
+    "type": "COMESTIBLE",
+    "id": "demihuman_cracklins",
+    "name": { "str_sp": "cracklins" },
+    "copy-from": "cracklins",
+    "material": [ "flesh" ],
+    "flags": [ "STRICT_HUMANITARIANISM" ]
   },
   {
     "type": "COMESTIBLE",
@@ -224,7 +256,7 @@
   {
     "type": "COMESTIBLE",
     "id": "currywurst",
-    "name": "currywurst",
+    "name": { "str": "currywurst" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "cheapskate %s" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "confusing %s" } },
@@ -241,7 +273,7 @@
     "description": "Sausage covered in a curry ketchup sauce.  Fairly spicy and impressive at the same time!",
     "price": 900,
     "price_postapoc": 350,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "250 ml",
     "charges": 2,
     "flags": [ "EATEN_HOT" ],
@@ -267,7 +299,7 @@
     "description": "A dish in which meat or fish is set into a gelatin made from a meat or vegetable stock.",
     "price": 2500,
     "price_postapoc": 150,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "250 ml",
     "vitamins": [ [ "vitA", 10 ], [ "vitC", 15 ], [ "calcium", 2 ], [ "iron", 8 ] ],
     "flags": [ "EATEN_COLD", "FREEZERBURN" ]
@@ -309,7 +341,7 @@
     "quench": -1,
     "healthy": 1,
     "description": "This is a serving of crisply brined and canned fish.  Tasty and nutritious.",
-    "material": "flesh",
+    "material": [ "flesh" ],
     "fun": 7
   },
   {
@@ -324,6 +356,7 @@
     "description": "Low-sodium preserved fish.  It was boiled and canned.  Contains most of the nutrition, but little of the savor of cooked fish.",
     "price": 250,
     "price_postapoc": 250,
+    "sealed": true,
     "fun": 2
   },
   {
@@ -340,7 +373,7 @@
     "description": "A delicious golden brown serving of crispy fried fish.",
     "price": 500,
     "price_postapoc": 400,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "250 ml",
     "flags": [ "EATEN_HOT" ],
     "fun": 10,
@@ -348,8 +381,35 @@
   },
   {
     "type": "COMESTIBLE",
+    "id": "crab_cakes",
+    "name": { "str": "crab cake" },
+    "copy-from": "fish_fried",
+    "weight": "150 g",
+    "calories": 572,
+    "description": "A delicious deep-fried biscuit loaded with crab meat.",
+    "//": "Currently only found in worldgen and is uncraftable. If crab gets added please make a recipe for crab cakes.",
+    "volume": "175 ml",
+    "looks_like": "fish_fried",
+    "fun": 13
+  },
+  {
+    "type": "COMESTIBLE",
+    "id": "stuffed_clams",
+    "name": { "str": "stuffed clam" },
+    "copy-from": "fish_fried",
+    "weight": "150 g",
+    "calories": 572,
+    "description": "Quahog clams stuffed with bread crumbs and fried.",
+    "volume": "175 ml",
+    "looks_like": "fish_fried",
+    "fun": 13,
+    "charges": 5,
+    "vitamins": [ [ "vitA", 6 ], [ "calcium", 2 ], [ "iron", 5 ], [ "vitB", 22 ] ]
+  },
+  {
+    "type": "COMESTIBLE",
     "id": "lunchmeat",
-    "name": "lunch meat",
+    "name": { "str": "lunch meat" },
     "conditional_names": [ { "type": "COMPONENT_ID", "condition": "mutant", "name": { "str_sp": "loathsome %s" } } ],
     "weight": "56 g",
     "color": "red",
@@ -363,7 +423,7 @@
     "price": 14,
     "price_postapoc": 75,
     "//": "*Looking for ~$6 per pound here.",
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "75 ml",
     "vitamins": [ [ "iron", 2 ] ]
   },
@@ -388,7 +448,7 @@
     "description": "Formally known as Bologna sausage, this is a finely ground preserved meat that comes in circular slices.  Its first name isn't Oscar.  You can eat it cold.",
     "price": 1000,
     "price_postapoc": 250,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "750 ml",
     "charges": 10,
     "vitamins": [ [ "iron", 15 ], [ "vitB", 8 ] ]
@@ -396,7 +456,7 @@
   {
     "type": "COMESTIBLE",
     "id": "lutefisk",
-    "name": "lutefisk",
+    "name": { "str": "lutefisk" },
     "weight": "175 g",
     "color": "light_gray",
     "spoils_in": "360 days",
@@ -409,7 +469,7 @@
     "description": "Lutefisk is preserved fish that has been dried in a lye solution.  Vile and soap-like yet highly nutritious, it is reminiscent of the afterbirth of a dog or the world's largest chunk of phlegm.",
     "price": 200,
     "price_postapoc": 250,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "primary_material": "cured_meat",
     "volume": "250 ml",
     "flags": [ "EATEN_HOT" ],
@@ -432,7 +492,7 @@
     "description": "A canned pork product that is unnaturally pink, oddly rubbery, and not very tasty, this SPAM remains quite filling.  Completely unappetizing, but quite filling.",
     "price": 400,
     "price_postapoc": 300,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "500 ml",
     "charges": 6,
     "flags": [ "EATEN_HOT" ],
@@ -444,7 +504,7 @@
     "id": "debug_nutrition",
     "copy-from": "can_spam",
     "name": { "str": "holy SPAM of debugging", "str_pl": "holy SPAMs of debugging" },
-    "calories": 2100,
+    "calories": 2150,
     "description": "A mysterious lump of SPAM that contains just enough calories and vitamins to feed you for a day.  For debug use only.",
     "//": "This is used for the all_nutrient_starve_test.",
     "vitamins": [ [ "vitA", 96 ], [ "vitB", 96 ], [ "vitC", 96 ], [ "calcium", 96 ], [ "iron", 96 ] ]
@@ -452,7 +512,7 @@
   {
     "type": "COMESTIBLE",
     "id": "can_sardine",
-    "name": "canned sardine",
+    "name": { "str": "canned sardine" },
     "weight": "200 g",
     "color": "light_gray",
     "spoils_in": "1 day",
@@ -464,7 +524,7 @@
     "description": "Salty little fish.  They'll make you thirsty.",
     "price": 200,
     "price_postapoc": 300,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "250 ml",
     "flags": [ "EATEN_HOT" ],
     "fun": 1,
@@ -520,14 +580,14 @@
     "price": 600,
     "price_postapoc": 350,
     "material": [ "flesh", "veggy" ],
-    "volume": "250 ml",
+    "volume": "120 ml",
     "vitamins": [ [ "vitC", 3 ], [ "calcium", 24 ], [ "iron", 14 ] ],
     "fun": 3
   },
   {
     "type": "COMESTIBLE",
     "id": "macaroni_helper",
-    "name": "hamburger helper",
+    "name": { "str": "hamburger helper" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "hobo helper" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "halfling helper" } },
@@ -554,7 +614,7 @@
   {
     "type": "COMESTIBLE",
     "id": "ravioli",
-    "name": "ravioli",
+    "name": { "str": "ravioli" },
     "weight": "170 g",
     "color": "light_red",
     "spoils_in": "2 days",
@@ -642,7 +702,7 @@
     "description": "Now with 95 percent fewer dolphins!",
     "price": 200,
     "price_postapoc": 300,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "250 ml",
     "fun": 2,
     "vitamins": [ [ "vitA", 4 ], [ "calcium", 2 ], [ "iron", 12 ], [ "vitB", 141 ] ]
@@ -661,7 +721,7 @@
     "description": "Bright pink fish-paste in a can!",
     "price": 500,
     "price_postapoc": 350,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "250 ml",
     "fun": 1,
     "vitamins": [ [ "vitA", 4 ], [ "calcium", 57 ], [ "iron", 9 ], [ "vitB", 413 ] ]
@@ -669,7 +729,7 @@
   {
     "type": "COMESTIBLE",
     "id": "can_chicken",
-    "name": "canned chicken",
+    "name": { "str": "canned chicken" },
     "weight": "217 g",
     "color": "pink",
     "spoils_in": "1 day",
@@ -680,7 +740,7 @@
     "description": "Bright white chicken-paste.",
     "price": 400,
     "price_postapoc": 600,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "500 ml",
     "charges": 2,
     "fun": 1,
@@ -700,7 +760,7 @@
     "description": "Fish fillets pickled in some sort of tangy white sauce.",
     "price": 310,
     "price_postapoc": 700,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "500 ml",
     "fun": 3,
     "charges": 2,
@@ -721,7 +781,7 @@
     "description": "Chopped quahog clams in water.",
     "price": 500,
     "price_postapoc": 500,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "250 ml",
     "fun": 2,
     "vitamins": [ [ "vitA", 28 ], [ "calcium", 11 ], [ "iron", 25 ], [ "vitB", 1312 ] ]
@@ -729,7 +789,7 @@
   {
     "type": "COMESTIBLE",
     "id": "can_chowder",
-    "name": "clam chowder",
+    "name": { "str": "clam chowder" },
     "conditional_names": [
       { "type": "COMPONENT_ID", "condition": "meat", "name": "meat chowder" },
       { "type": "COMPONENT_ID", "condition": "mutant", "name": "monster chowder" }
@@ -821,7 +881,7 @@
   {
     "type": "COMESTIBLE",
     "id": "pie_meat",
-    "name": "meat pie",
+    "name": { "str": "meat pie" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "prick pie" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "talking animal pie" } },
@@ -849,7 +909,7 @@
   {
     "type": "COMESTIBLE",
     "id": "pizza_meat",
-    "name": "meat pizza",
+    "name": { "str": "meat pizza" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "poser pizza" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "protesting pizza" } },
@@ -875,7 +935,7 @@
   {
     "type": "COMESTIBLE",
     "id": "pizza_supreme",
-    "name": "supreme pizza",
+    "name": { "str": "supreme pizza" },
     "copy-from": "pizza_meat",
     "color": "light_red",
     "weight": "300 g",
@@ -912,7 +972,7 @@
   {
     "type": "COMESTIBLE",
     "id": "meat_canned",
-    "name": "canned meat",
+    "name": { "str": "canned meat" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "soylent slice" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "sapient slice" } },
@@ -926,12 +986,13 @@
     "price": 250,
     "price_postapoc": 250,
     "flags": [ "EATEN_HOT" ],
+    "sealed": true,
     "fun": 2
   },
   {
     "type": "COMESTIBLE",
     "id": "meat_salted",
-    "name": "salted meat slice",
+    "name": { "str": "salted meat slice" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "salted simpleton slice" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "salted sapient slice" } },
@@ -945,7 +1006,7 @@
     "description": "Meat slices cured in brine.  Salty but tasty in a pinch.",
     "price": 500,
     "price_postapoc": 300,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "delete": { "flags": [ "NUTRIENT_OVERRIDE" ] },
     "primary_material": "cured_meat",
     "fun": 2
@@ -979,7 +1040,7 @@
   {
     "type": "COMESTIBLE",
     "id": "lasagne",
-    "name": "lasagne",
+    "name": { "str": "lasagne" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "Luigi %s" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "Lab %s" } },
@@ -1013,20 +1074,20 @@
     "quench": -6,
     "description": "Having been fried, this SPAM is actually pretty tasty.",
     "price": 500,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "flags": [ "EATEN_HOT" ],
     "fun": 8
   },
   {
     "type": "COMESTIBLE",
     "id": "cheeseburger",
-    "name": "cheeseburger",
+    "name": { "str": "cheeseburger" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "chump %s" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "elf %s" } },
       { "type": "COMPONENT_ID", "condition": "mutant", "name": { "str_sp": "chilling %s" } }
     ],
-    "weight": "133 g",
+    "weight": "333 g",
     "color": "brown",
     "spoils_in": "1 day 12 hours",
     "container": "wrapper",
@@ -1038,7 +1099,7 @@
     "price_postapoc": 250,
     "material": [ "flesh", "wheat", "milk" ],
     "primary_material": "processed_food",
-    "volume": "500 ml",
+    "volume": "300 ml",
     "flags": [ "EATEN_HOT", "ALLERGEN_MILK" ],
     "fun": 5,
     "vitamins": [ [ "calcium", 9 ], [ "iron", 14 ] ]
@@ -1046,13 +1107,13 @@
   {
     "type": "COMESTIBLE",
     "id": "hamburger",
-    "name": "hamburger",
+    "name": { "str": "hamburger" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "bobburger" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "Moreauburger" } },
       { "type": "COMPONENT_ID", "condition": "mutant", "name": { "str_sp": "horrible %s" } }
     ],
-    "weight": "99 g",
+    "weight": "300 g",
     "color": "brown",
     "spoils_in": "1 day 12 hours",
     "container": "wrapper",
@@ -1063,7 +1124,7 @@
     "price": 900,
     "price_postapoc": 200,
     "material": [ "flesh", "wheat" ],
-    "volume": "500 ml",
+    "volume": "300 ml",
     "flags": [ "EATEN_HOT" ],
     "fun": 4,
     "vitamins": [ [ "vitC", 2 ], [ "calcium", 8 ], [ "iron", 16 ] ]
@@ -1071,7 +1132,7 @@
   {
     "type": "COMESTIBLE",
     "id": "sloppyjoe",
-    "name": "sloppy joe",
+    "name": { "str": "sloppy joe" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str": "manwich", "str_pl": "manwiches" } },
       {
@@ -1081,7 +1142,7 @@
       },
       { "type": "COMPONENT_ID", "condition": "mutant", "name": { "str_sp": "suspicious %s" } }
     ],
-    "weight": "113 g",
+    "weight": "313 g",
     "color": "brown",
     "spoils_in": "1 day 12 hours",
     "container": "wrapper",
@@ -1092,7 +1153,7 @@
     "price": 900,
     "price_postapoc": 250,
     "material": [ "flesh", "tomato", "wheat" ],
-    "volume": "500 ml",
+    "volume": "300 ml",
     "flags": [ "EATEN_HOT" ],
     "fun": 4,
     "vitamins": [ [ "vitC", 5 ], [ "calcium", 4 ], [ "iron", 5 ] ]
@@ -1100,7 +1161,7 @@
   {
     "type": "COMESTIBLE",
     "id": "taco",
-    "name": "taco",
+    "name": { "str": "taco" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "tio %s" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "talking %s" } },
@@ -1117,7 +1178,7 @@
     "description": "A traditional Mexican dish composed of a corn tortilla folded or rolled around a meat filling.",
     "price": 210,
     "price_postapoc": 150,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "250 ml",
     "fun": 8,
     "vitamins": [ [ "calcium", 13 ], [ "iron", 9 ], [ "vitB", 36 ] ]
@@ -1125,7 +1186,7 @@
   {
     "type": "COMESTIBLE",
     "id": "meat_pickled",
-    "name": "pickled meat",
+    "name": { "str": "pickled meat" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "pickled punk" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "pickled anthro" } },
@@ -1145,7 +1206,7 @@
   {
     "type": "COMESTIBLE",
     "id": "dry_meat",
-    "name": "dehydrated meat",
+    "name": { "str": "dehydrated meat" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "%s, human" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "%s, demihuman" } },
@@ -1159,7 +1220,7 @@
     "description": "Dehydrated meat flakes.  With proper storage, this dried food will remain edible for an incredibly long time.",
     "price": 900,
     "price_postapoc": 300,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "primary_material": "cured_meat",
     "volume": "125 ml",
     "flags": [ "EDIBLE_FROZEN" ]
@@ -1167,7 +1228,7 @@
   {
     "type": "COMESTIBLE",
     "id": "rehydrated_meat",
-    "name": "rehydrated meat",
+    "name": { "str": "rehydrated meat" },
     "conditional_names": [
       { "type": "FLAG", "condition": "CANNIBALISM", "name": { "str_sp": "%s, human" } },
       { "type": "FLAG", "condition": "STRICT_HUMANITARIANISM", "name": { "str_sp": "%s, demihuman" } },
@@ -1266,30 +1327,30 @@
   {
     "type": "COMESTIBLE",
     "id": "dry_meat_tainted",
-    "name": "dehydrated tainted meat",
+    "name": { "str": "dehydrated tainted meat" },
     "copy-from": "meat_tainted",
     "weight": "85 g",
     "color": "red",
     "spoils_in": "360 days",
-    "use_action": "POISON",
+    "use_action": [ "POISON" ],
     "quench": -3,
     "description": "Pieces of poisonous meat that have been dried to prevent them from rotting away.  It will still poison you if you eat this.",
     "price": 0,
     "price_postapoc": 10,
-    "material": "flesh",
+    "material": [ "flesh" ],
     "volume": "125 ml",
     "flags": [ "EDIBLE_FROZEN" ],
-    "fun": -4
+    "fun": -7
   },
   {
     "type": "COMESTIBLE",
     "id": "pelmeni",
-    "name": "pelmeni",
+    "name": { "str": "pelmeni" },
     "conditional_names": [ { "type": "COMPONENT_ID", "condition": "mutant", "name": { "str_sp": "perilous %s" } } ],
     "weight": "151 g",
     "color": "light_red",
     "spoils_in": "2 days",
-    "container": "can_food",
+    "container": "can_medium",
     "comestible_type": "FOOD",
     "symbol": "%",
     "calories": 300,
@@ -1306,7 +1367,7 @@
   {
     "type": "COMESTIBLE",
     "id": "homemade_burrito",
-    "name": "homemade burrito",
+    "name": { "str": "homemade burrito" },
     "conditional_names": [ { "type": "COMPONENT_ID", "condition": "mutant", "name": "bone-chilling burrito" } ],
     "weight": "142 g",
     "color": "brown",

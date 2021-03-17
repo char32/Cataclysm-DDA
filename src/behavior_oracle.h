@@ -3,12 +3,13 @@
 #define CATA_SRC_BEHAVIOR_ORACLE_H
 
 #include <functional>
+#include <iosfwd>
 #include <string>
 #include <unordered_map>
 
 namespace behavior
 {
-enum status_t : char;
+enum class status_t : char;
 
 /**
  * An oracle is a class in charge of introspecting into a game entity in a particular way.

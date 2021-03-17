@@ -2,12 +2,12 @@
 
 #include "action.h"
 #include "character.h"
+#include "color.h"
 #include "enums.h"
 #include "json.h"
 #include "martialarts.h"
 #include "messages.h"
 #include "output.h"
-#include "string_id.h"
 #include "translations.h"
 
 static const matype_id style_kicks( "style_kicks" );
@@ -87,6 +87,17 @@ void character_martial_arts::set_style( const matype_id &mastyle, bool force )
 void character_martial_arts::reset_style()
 {
     style_selected = style_none;
+}
+
+void character_martial_arts::clear_styles()
+{
+    keep_hands_free = false;
+
+    ma_styles = { {
+            style_none, style_kicks
+        }
+    };
+    reset_style();
 }
 
 void character_martial_arts::selected_style_check()

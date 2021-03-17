@@ -80,6 +80,12 @@
   },
   {
     "type": "item_group",
+    "id": "debug_template_item",
+    "subtype": "distribution",
+    "entries": [ { "item": "standard_template_construct", "prob": 10 } ]
+  },
+  {
+    "type": "item_group",
     "id": "nanofab_recipes",
     "//": "Very rare high level loot. This list doesn't spawn anywhere directly, it is used to create the recipes inside nanofabricator templates. ",
     "magazine": 100,
@@ -172,6 +178,7 @@
       { "item": "m203", "prob": 50 },
       { "item": "LAW_Packed", "prob": 80 },
       { "item": "m3_carlgustav", "prob": 10 },
+      { "item": "m4_carlgustav", "prob": 10 },
       { "item": "m202_flash", "prob": 20 },
       { "item": "RPG", "prob": 40 },
       { "item": "RPG-7_ammo", "prob": 35 },

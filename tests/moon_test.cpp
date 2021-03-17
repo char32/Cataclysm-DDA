@@ -1,7 +1,9 @@
-#include "calendar.h"
-#include "enum_conversions.h"
+#include <iosfwd>
+#include <string>
 
+#include "calendar.h"
 #include "catch/catch.hpp"
+#include "enum_conversions.h"
 
 // MOON TESTS
 //
@@ -107,6 +109,9 @@ TEST_CASE( "lunar month is scaled by season default ratio", "[calendar][moon][mo
             CHECK( get_moon_phase( zero + 7_days ) == MOON_FULL );
         }
     }
+
+    calendar::set_season_length( 91 ); // Reset to default
+    REQUIRE( calendar::season_from_default_ratio() == Approx( 1.0f ) );
 }
 
 // With 8 discrete phases during a 29-day period, each phase lasts three or four days.
@@ -213,7 +218,7 @@ TEST_CASE( "moonlight at dawn and dusk", "[calendar][moon][moonlight][dawn][dusk
 
         // Daylight level should be 100 at first new moon
         float daylight_level = current_daylight_level( new_noon );
-        float half_twilight = ( daylight_level + 1 ) / 2;
+        float half_twilight = ( daylight_level + 1.0f ) / 2.0f;
         float moonlight_level = 1.0f;
 
         THEN( "at night, light is only moonlight" ) {
@@ -248,7 +253,7 @@ TEST_CASE( "moonlight at dawn and dusk", "[calendar][moon][moonlight][dawn][dusk
 
         // Daylight level is higher, later in the season (~104 at first full moon)
         float daylight_level = current_daylight_level( full_noon );
-        float half_twilight = ( daylight_level + 10 ) / 2;
+        float half_twilight = ( daylight_level + 10.0f ) / 2.0f;
         float moonlight_level = 10.0f;
 
         THEN( "at night, light is only moonlight" ) {

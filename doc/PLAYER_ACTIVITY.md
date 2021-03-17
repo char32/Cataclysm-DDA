@@ -10,8 +10,8 @@ than just one turn.
 1. `player_activities.json` Define properties that apply to all instances
 of the activity in question.
 
-2. `activity_actor.h` Create a new subclass of `activity_actor`
-(e.g. move_items_activity_actor) to store state and handle turns of the
+2. `activity_actor_definitions.h` Create a new subclass of `activity_actor`
+(e.g., move_items_activity_actor) to store state and handle turns of the
 new activity.
 
 3. `activity_actor.cpp` Define the `start`, `do_turn`, and `finish`
@@ -54,6 +54,9 @@ without moving your feet.
 
     * neither: `moves_left` will not be decremented. Thus you must
     define a do_turn function; otherwise the activity will never end!
+
+* interruptable (true): Can this be interrupted.  If false, then popups related
+to e.g. pain or seeing monsters will be suppressed.
 
 * no_resume (false): Rather than resuming, you must always restart the
 activity from scratch.

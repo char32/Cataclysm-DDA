@@ -1,40 +1,41 @@
 #include "output.h"
 
-#include <cerrno>
 #include <cctype>
-#include <cstdio>
+// IWYU pragma: no_include <sys/errno.h>
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstdarg>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <map>
+#include <new>
 #include <sstream>
 #include <stack>
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <array>
-#include <memory>
-#include <type_traits>
-#include <cmath>
 
+#include "cached_options.h" // IWYU pragma: keep
 #include "cata_utility.h"
 #include "catacharset.h"
 #include "color.h"
+#include "cursesport.h" // IWYU pragma: keep
 #include "cursesdef.h"
-#include "cursesport.h"
 #include "input.h"
 #include "item.h"
 #include "line.h"
 #include "name.h"
 #include "options.h"
+#include "point.h"
 #include "popup.h"
 #include "rng.h"
+#include "sdltiles.h" // IWYU pragma: keep
 #include "string_formatter.h"
 #include "string_input_popup.h"
 #include "ui_manager.h"
-#include "units.h"
-#include "point.h"
+#include "units_utility.h"
 #include "wcwidth.h"
 
 #if defined(__ANDROID__)
@@ -61,10 +62,6 @@ int OVERMAP_LEGEND_WIDTH;
 static std::string rm_prefix( std::string str, char c1 = '<', char c2 = '>' );
 
 scrollingcombattext SCT;
-extern bool tile_iso;
-extern bool use_tiles;
-
-extern bool test_mode;
 
 // utf8 version
 std::vector<std::string> foldstring( const std::string &str, int width, const char split )
@@ -150,7 +147,7 @@ std::string remove_color_tags( const std::string &s )
     std::vector<size_t> tag_positions = get_tag_positions( s );
     size_t next_pos = 0;
 
-    if( tag_positions.size() > 1 ) {
+    if( !tag_positions.empty() ) {
         for( size_t tag_position : tag_positions ) {
             ret += s.substr( next_pos, tag_position - next_pos );
             next_pos = s.find( ">", tag_position, 1 ) + 1;
@@ -163,9 +160,11 @@ std::string remove_color_tags( const std::string &s )
     return ret;
 }
 
-static void update_color_stack( std::stack<nc_color> &color_stack, const std::string &seg )
+static color_tag_parse_result::tag_type update_color_stack(
+    std::stack<nc_color> &color_stack, const std::string &seg,
+    const report_color_error color_error = report_color_error::yes )
 {
-    color_tag_parse_result tag = get_color_from_tag( seg );
+    color_tag_parse_result tag = get_color_from_tag( seg, color_error );
     switch( tag.type ) {
         case color_tag_parse_result::open_color_tag:
             color_stack.push( tag.color );
@@ -179,10 +178,12 @@ static void update_color_stack( std::stack<nc_color> &color_stack, const std::st
             // Do nothing
             break;
     }
+    return tag.type;
 }
 
 void print_colored_text( const catacurses::window &w, const point &p, nc_color &color,
-                         const nc_color &base_color, const std::string &text )
+                         const nc_color &base_color, const std::string &text,
+                         const report_color_error color_error )
 {
     if( p.y > -1 && p.x > -1 ) {
         wmove( w, p );
@@ -197,8 +198,11 @@ void print_colored_text( const catacurses::window &w, const point &p, nc_color &
         }
 
         if( seg[0] == '<' ) {
-            update_color_stack( color_stack, seg );
-            seg = rm_prefix( seg );
+            const color_tag_parse_result::tag_type type = update_color_stack(
+                        color_stack, seg, color_error );
+            if( type != color_tag_parse_result::non_color_tag ) {
+                seg = rm_prefix( seg );
+            }
         }
 
         color = color_stack.empty() ? base_color : color_stack.top();
@@ -206,11 +210,14 @@ void print_colored_text( const catacurses::window &w, const point &p, nc_color &
     }
 }
 
-void trim_and_print( const catacurses::window &w, const point &begin, int width,
-                     nc_color base_color, const std::string &text )
+void trim_and_print( const catacurses::window &w, const point &begin,
+                     const int width, const nc_color &base_color,
+                     const std::string &text,
+                     const report_color_error color_error )
 {
     std::string sText = trim_by_length( text, width );
-    print_colored_text( w, begin, base_color, base_color, sText );
+    nc_color dummy = base_color;
+    print_colored_text( w, begin, dummy, base_color, sText, color_error );
 }
 
 std::string trim_by_length( const std::string  &text, int width )
@@ -240,8 +247,9 @@ std::string trim_by_length( const std::string  &text, int width )
             iLength += iTempLen;
 
             if( iLength > width ) {
-                sTempText = sTempText.substr( 0, cursorx_to_position( sTempText.c_str(),
-                                              iTempLen - ( iLength - width ) - 1, nullptr, -1 ) ) + "\u2026";
+                int pos = 0;
+                cursorx_to_position( sTempText.c_str(), iTempLen - ( iLength - width ) - 1, &pos, -1 );
+                sTempText = sTempText.substr( 0, pos ) + "\u2026";
             }
 
             sText += sColor + sTempText;
@@ -265,7 +273,7 @@ int print_scrollable( const catacurses::window &w, int begin_line, const std::st
     const size_t wwidth = getmaxx( w );
     const auto text_lines = foldstring( text, wwidth );
     size_t wheight = getmaxy( w );
-    const auto print_scroll_msg = text_lines.size() > wheight;
+    const bool print_scroll_msg = text_lines.size() > wheight;
     if( print_scroll_msg && !scroll_msg.empty() ) {
         // keep the last line free for a message to the player
         wheight--;
@@ -317,14 +325,18 @@ int fold_and_print_from( const catacurses::window &w, const point &begin, int wi
         // for each section, get the color, and print it
         std::vector<std::string>::iterator it;
         for( it = color_segments.begin(); it != color_segments.end(); ++it ) {
+            color_tag_parse_result::tag_type type = color_tag_parse_result::non_color_tag;
             if( !it->empty() && it->at( 0 ) == '<' ) {
-                update_color_stack( color_stack, *it );
+                type = update_color_stack( color_stack, *it );
             }
             if( line_num >= begin_line ) {
-                std::string l = rm_prefix( *it );
+                std::string l = *it;
+                if( type != color_tag_parse_result::non_color_tag ) {
+                    l = rm_prefix( l );
+                }
                 if( l != "--" ) { // -- is a separation line!
                     nc_color color = color_stack.empty() ? base_color : color_stack.top();
-                    wprintz( w, color, rm_prefix( *it ) );
+                    wprintz( w, color, l );
                 } else {
                     for( int i = 0; i < width; i++ ) {
                         wputch( w, c_dark_gray, LINE_OXOX );
@@ -336,19 +348,11 @@ int fold_and_print_from( const catacurses::window &w, const point &begin, int wi
     return textformatted.size();
 }
 
-void scrollable_text( const catacurses::window &w, const std::string &title,
-                      const std::string &text )
-{
-    scrollable_text( [&w]() {
-        return w;
-    }, title, text );
-}
-
 void scrollable_text( const std::function<catacurses::window()> &init_window,
                       const std::string &title, const std::string &text )
 {
-    constexpr int text_x = 1;
-    constexpr int text_y = 1;
+    // NOLINTNEXTLINE(cata-use-named-point-constants)
+    constexpr point text2( 1, 1 );
 
     input_context ctxt( "SCROLLABLE_TEXT" );
     ctxt.register_action( "UP" );
@@ -387,14 +391,14 @@ void scrollable_text( const std::function<catacurses::window()> &init_window,
     ui.on_redraw( [&]( const ui_adaptor & ) {
         werase( w );
         draw_border( w, BORDER_COLOR, title, c_black_white );
-        for( int line = beg_line, pos_y = text_y; line < std::min<int>( beg_line + text_h, lines.size() );
+        for( int line = beg_line, pos_y = text2.y; line < std::min<int>( beg_line + text_h, lines.size() );
              ++line, ++pos_y ) {
             nc_color dummy = c_white;
-            print_colored_text( w, point( text_x, pos_y ), dummy, dummy, lines[line] );
+            print_colored_text( w, point( text2.x, pos_y ), dummy, dummy, lines[line] );
         }
-        scrollbar().offset_x( width - 1 ).offset_y( text_y ).content_size( lines.size() )
+        scrollbar().offset_x( width - 1 ).offset_y( text2.y ).content_size( lines.size() )
         .viewport_pos( std::min( beg_line, max_beg_line ) ).viewport_size( text_h ).apply( w );
-        wrefresh( w );
+        wnoutrefresh( w );
     } );
 
     std::string action;
@@ -693,12 +697,13 @@ int border_helper::border_connection::as_curses_line() const
 bool query_yn( const std::string &text )
 {
     const bool force_uc = get_option<bool>( "FORCE_CAPITAL_YN" );
-    const auto &allow_key = force_uc ? input_context::disallow_lower_case
+    const auto &allow_key = force_uc ? input_context::disallow_lower_case_or_non_modified_letters
                             : input_context::allow_all_keys;
 
     return query_popup()
+           .preferred_keyboard_mode( keyboard_mode::keycode )
            .context( "YESNO" )
-           .message( force_uc ?
+           .message( force_uc && !is_keycode_mode_supported() ?
                      pgettext( "query_yn", "%s (Case Sensitive)" ) :
                      pgettext( "query_yn", "%s" ), text )
            .option( "YES", allow_key )
@@ -744,6 +749,7 @@ std::vector<std::string> get_hotkeys( const std::string &s )
 int popup( const std::string &text, PopupFlags flags )
 {
     query_popup pop;
+    pop.preferred_keyboard_mode( keyboard_mode::keychar );
     pop.message( "%s", text );
     if( flags & PF_GET_KEY ) {
         pop.allow_anykey( true );
@@ -759,7 +765,7 @@ int popup( const std::string &text, PopupFlags flags )
 
     pop.context( "POPUP_WAIT" );
     const auto &res = pop.query();
-    if( res.evt.type == input_event_t::keyboard ) {
+    if( res.evt.type == input_event_t::keyboard_char ) {
         return res.evt.get_first_input();
     } else {
         return UNKNOWN_UNICODE;
@@ -781,7 +787,7 @@ input_event draw_item_info( const int iLeft, const int iWidth, const int iTop, c
     clear_window_area( win );
 #endif // TILES
     wclear( win );
-    wrefresh( win );
+    wnoutrefresh( win );
 
     const input_event result = draw_item_info( win, data );
     return result;
@@ -820,7 +826,7 @@ std::string replace_colors( std::string text )
         {"neutral", get_all_colors().get_name( c_yellow )}
     };
 
-    for( auto &elem : info_colors ) {
+    for( const auto &elem : info_colors ) {
         text = string_replace( text, "<" + elem.first + ">", "<color_" + elem.second + ">" );
         text = string_replace( text, "</" + elem.first + ">", "</color>" );
     }
@@ -869,7 +875,7 @@ void draw_item_filter_rules( const catacurses::window &win, int starty, int heig
     fold_and_print( win, point( 1, starty ), len, c_white,
                     //~ An example of how to filter items based on category or material.
                     _( "Examples: c:food,m:iron,q:hammering,n:toolshelf,d:pipe" ) );
-    wrefresh( win );
+    wnoutrefresh( win );
 }
 
 std::string format_item_info( const std::vector<iteminfo> &vItemDisplay,
@@ -887,9 +893,6 @@ std::string format_item_info( const std::vector<iteminfo> &vItemDisplay,
             if( i.bDrawName ) {
                 buffer += i.sName;
             }
-            // Always end with a linebreak for sType == "DESCRIPTION"
-            buffer += "\n";
-            bIsNewLine = true;
         } else {
             if( i.bDrawName ) {
                 buffer += i.sName;
@@ -909,7 +912,7 @@ std::string format_item_info( const std::vector<iteminfo> &vItemDisplay,
 
             if( i.sValue != "-999" ) {
                 nc_color thisColor = c_yellow;
-                for( auto &k : vItemCompare ) {
+                for( const iteminfo &k : vItemCompare ) {
                     if( k.sValue != "-999" ) {
                         if( i.sName == k.sName && i.sType == k.sType ) {
                             if( i.dValue > k.dValue - .1 &&
@@ -935,11 +938,11 @@ std::string format_item_info( const std::vector<iteminfo> &vItemDisplay,
                 buffer += colorize( i.sValue, thisColor );
             }
             buffer += sPost;
+        }
 
-            // Set bIsNewLine in case the next line should always start in a new line
-            if( ( bIsNewLine = i.bNewLine ) ) {
-                buffer += "\n";
-            }
+        // Set bIsNewLine in case the next line should always start in a new line
+        if( ( bIsNewLine = i.bNewLine ) ) {
+            buffer += "\n";
         }
     }
 
@@ -1013,7 +1016,7 @@ input_event draw_item_info( const std::function<catacurses::window()> &init_wind
         if( !data.without_border ) {
             draw_custom_border( win, buffer.empty() );
         }
-        wrefresh( win );
+        wnoutrefresh( win );
     };
 
     if( data.without_getch ) {
@@ -1032,7 +1035,7 @@ input_event draw_item_info( const std::function<catacurses::window()> &init_wind
         redraw();
     } );
 
-    input_context ctxt;
+    input_context ctxt( "default", keyboard_mode::keychar );
     if( data.handle_scrolling ) {
         ctxt.register_action( "PAGE_UP" );
         ctxt.register_action( "PAGE_DOWN" );
@@ -1148,6 +1151,12 @@ std::string trim_punctuation_marks( const std::string &s )
 using char_t = std::string::value_type;
 std::string to_upper_case( const std::string &s )
 {
+    if( std::locale().name() != "en_US.UTF-8" && std::locale().name() != "C" ) {
+        const auto &f = std::use_facet<std::ctype<wchar_t>>( std::locale() );
+        std::wstring wstr = utf8_to_wstr( s );
+        f.toupper( &wstr[0], &wstr[0] + wstr.size() );
+        return wstr_to_utf8( wstr );
+    }
     std::string res;
     std::transform( s.begin(), s.end(), std::back_inserter( res ), []( char_t ch ) {
         return std::use_facet<std::ctype<char_t>>( std::locale() ).toupper( ch );
@@ -1336,7 +1345,7 @@ void draw_tabs( const catacurses::window &w, const std::vector<std::string> &tab
                 const std::string &current_tab )
 {
     auto it = std::find( tab_texts.begin(), tab_texts.end(), current_tab );
-    assert( it != tab_texts.end() );
+    cata_assert( it != tab_texts.end() );
     draw_tabs( w, tab_texts, it - tab_texts.begin() );
 }
 
@@ -1527,7 +1536,7 @@ void scrolling_text_view::draw( const nc_color &base_color )
                             text_[line_num + offset_] );
     }
 
-    wrefresh( w_ );
+    wnoutrefresh( w_ );
 }
 
 int scrolling_text_view::text_width()
@@ -1564,25 +1573,6 @@ void calcStartPos( int &iStartPos, const int iCurrentLine, const int iContentHei
             iStartPos = 1 + iCurrentLine - iContentHeight;
         }
     }
-}
-
-catacurses::window w_hit_animation;
-void hit_animation( const point &p, nc_color cColor, const std::string &cTile )
-{
-    catacurses::window w_hit =
-        catacurses::newwin( 1, 1, p );
-    if( !w_hit ) {
-        return; //we passed in negative values (semi-expected), so let's not segfault
-    }
-    w_hit_animation = w_hit;
-
-    mvwprintz( w_hit, point_zero, cColor, cTile );
-    wrefresh( w_hit );
-
-    inp_mngr.set_timeout( get_option<int>( "ANIMATION_DELAY" ) );
-    // Skip input (if any), because holding down a key with nanosleep can get yourself killed
-    inp_mngr.get_input_event();
-    inp_mngr.reset_timeout();
 }
 
 #if defined(_MSC_VER)
@@ -1857,24 +1847,33 @@ std::string shortcut_text( nc_color shortcut_color, const std::string &fmt )
 }
 
 std::pair<std::string, nc_color>
-get_bar( float cur, float max, int width, bool extra_resolution,
+get_bar( const float cur, const float max,
+         const int width, const bool extra_resolution,
          const std::vector<nc_color> &colors )
 {
     std::string result;
-    float status = cur / max;
-    status = status > 1 ? 1 : status;
-    status = status < 0 ? 0 : status;
-    float sw = status * width;
+    const float status = clamp( cur / max, 0.0f, 1.0f );
+    const float sw = status * width;
 
-    nc_color col = colors[static_cast<int>( ( 1 - status ) * colors.size() )];
-    if( status == 0 ) {
-        col = colors.back();
-    } else if( ( sw < 0.5 ) && ( sw > 0 ) ) {
-        result = ":";
+    nc_color col;
+    if( !std::isfinite( status ) || colors.empty() ) {
+        col = c_red_red;
     } else {
-        result += std::string( sw, '|' );
-        if( extra_resolution && ( sw - static_cast<int>( sw ) >= 0.5 ) ) {
+        int ind = static_cast<int>( ( 1 - status ) * colors.size() );
+        ind = clamp<int>( ind, 0, colors.size() - 1 );
+        col = colors[ind];
+    }
+    if( !std::isfinite( sw ) || sw <= 0 ) {
+        result.clear();
+    } else {
+        const int pipes = static_cast<int>( sw );
+        if( pipes > 0 ) {
+            result += std::string( pipes, '|' );
+        }
+        if( extra_resolution && sw - pipes >= 0.5 ) {
             result += "\\";
+        } else if( pipes == 0 ) {
+            result = ":";
         }
     }
 
@@ -1930,7 +1929,7 @@ std::string get_labeled_bar( const double val, const int width, const std::strin
  * @param pad Reduce table width by padding left side.
  * @param line Line to insert table.
  * @param columns Number of columns. Can be 1.
- * @param nc_color &FG Default color of table text.
+ * @param FG Default color of table text.
  * @param divider To insert a character separating table entries. Can be blank.
  * @param r_align true for right aligned, false for left aligned.
  * @param data Text data to fill.
@@ -1988,6 +1987,25 @@ void insert_table( const catacurses::window &w, int pad, int line, int columns,
         }
     }
     wattroff( w, FG );
+}
+
+std::string satiety_bar( const int calpereffv )
+{
+    // Arbitrary max value we will cap our vague display to. Will be lower than the actual max value, but scaling fixes that.
+    constexpr float max_cal_per_effective_vol = 1500.0f;
+    // Scaling the values.
+    const float scaled_max = std::sqrt( max_cal_per_effective_vol );
+    const float scaled_cal = std::sqrt( calpereffv );
+    const std::pair<std::string, nc_color> nourishment_bar = get_bar(
+                scaled_cal, scaled_max, 5, true );
+    // Colorize the bar.
+    std::string result = colorize( nourishment_bar.first, nourishment_bar.second );
+    // Pad to 5 characters with dots.
+    const int width = utf8_width( nourishment_bar.first );
+    if( width < 5 ) {
+        result += std::string( 5 - width, '.' );
+    }
+    return result;
 }
 
 scrollingcombattext::cSCT::cSCT( const point &p_pos, const direction p_oDir,
@@ -2081,7 +2099,7 @@ void scrollingcombattext::add( const point &pos, direction p_oDir,
 
             //Message offset: multiple impacts in the same direction in short order overriding prior messages (mostly turrets)
             for( auto &iter : vSCT ) {
-                if( iter.getDirecton() == p_oDir && ( iter.getStep() + iter.getStepOffset() ) == iCurStep ) {
+                if( iter.getDirection() == p_oDir && ( iter.getStep() + iter.getStepOffset() ) == iCurStep ) {
                     ++iCurStep;
                     iter.advanceStepOffset();
                 }
@@ -2092,7 +2110,7 @@ void scrollingcombattext::add( const point &pos, direction p_oDir,
         } else {
             //Message offset: this time in reverse.
             for( std::vector<cSCT>::reverse_iterator iter = vSCT.rbegin(); iter != vSCT.rend(); ++iter ) {
-                if( iter->getDirecton() == p_oDir && ( iter->getStep() + iter->getStepOffset() ) == iCurStep ) {
+                if( iter->getDirection() == p_oDir && ( iter->getStep() + iter->getStepOffset() ) == iCurStep ) {
                     ++iCurStep;
                     iter->advanceStepOffset();
                 }
@@ -2416,10 +2434,6 @@ int get_terminal_height()
 bool is_draw_tiles_mode()
 {
     return false;
-}
-
-void refresh_display()
-{
 }
 #endif
 

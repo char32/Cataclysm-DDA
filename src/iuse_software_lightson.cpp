@@ -1,19 +1,23 @@
 #include "iuse_software_lightson.h"
 
 #include <algorithm>
+#include <functional>
+#include <iosfwd>
+#include <new>
 #include <string>
 #include <vector>
 
+#include "cata_utility.h"
+#include "catacharset.h"
+#include "color.h"
 #include "cursesdef.h"
 #include "input.h"
+#include "optional.h"
 #include "output.h"
+#include "point.h"
 #include "rng.h"
 #include "translations.h"
 #include "ui_manager.h"
-#include "catacharset.h"
-#include "color.h"
-#include "optional.h"
-#include "point.h"
 
 void lightson_game::new_level()
 {
@@ -24,7 +28,7 @@ void lightson_game::new_level()
     const int lvl_width = rng( 4, 6 );
     const int lvl_height = half_perimeter - lvl_width;
     level_size = point( lvl_width, lvl_height );
-    level.resize( lvl_height * lvl_width );
+    level.resize( static_cast<size_t>( lvl_height ) * static_cast<size_t>( lvl_width ) );
 
     const int steps_rng = half_perimeter / 2.0 + rng_float( 0.0, 2.0 );
     generate_change_coords( steps_rng );
@@ -73,7 +77,7 @@ void lightson_game::draw_level()
             mvwputch( w, current + point_south_east, selected ? hilite( c_white ) : fg, symbol );
         }
     }
-    wrefresh( w );
+    wnoutrefresh( w );
 }
 
 void lightson_game::generate_change_coords( int changes )
@@ -132,10 +136,10 @@ int lightson_game::start_game()
 
     ui_adaptor ui;
     ui.on_screen_resize( [&]( ui_adaptor & ui ) {
-        const int iOffsetX = TERMX > FULL_SCREEN_WIDTH ? ( TERMX - FULL_SCREEN_WIDTH ) / 2 : 0;
-        const int iOffsetY = TERMY > FULL_SCREEN_HEIGHT ? ( TERMY - FULL_SCREEN_HEIGHT ) / 2 : 0;
-        w_border = catacurses::newwin( w_height, FULL_SCREEN_WIDTH, point( iOffsetX, iOffsetY ) );
-        w = catacurses::newwin( w_height - 6, FULL_SCREEN_WIDTH - 2, point( iOffsetX + 1, iOffsetY + 1 ) );
+        const point iOffset( TERMX > FULL_SCREEN_WIDTH ? ( TERMX - FULL_SCREEN_WIDTH ) / 2 : 0,
+                             TERMY > FULL_SCREEN_HEIGHT ? ( TERMY - FULL_SCREEN_HEIGHT ) / 2 : 0 );
+        w_border = catacurses::newwin( w_height, FULL_SCREEN_WIDTH, iOffset );
+        w = catacurses::newwin( w_height - 6, FULL_SCREEN_WIDTH - 2, iOffset + point_south_east );
         ui.position_from_window( w_border );
     } );
     ui.mark_resize();
@@ -176,7 +180,7 @@ int lightson_game::start_game()
                         _( "<color_white>Legend: #</color> on, <color_dark_gray>-</color> off." ),
                         _( "Toggle lights switches selected light and 4 its neighbors." ) );
 
-        wrefresh( w_border );
+        wnoutrefresh( w_border );
 
         draw_level();
     } );

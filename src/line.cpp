@@ -1,20 +1,27 @@
 #include "line.h"
 
-#include <cstdlib>
-#include <cassert>
 #include <algorithm>
 #include <array>
-#include <memory>
+#include <cstdlib>
 #include <tuple>
 #include <utility>
 
-#include "math_defines.h"
-#include "translations.h"
-#include "string_formatter.h"
-#include "output.h"
+#include "cata_assert.h"
 #include "enums.h"
+#include "math_defines.h"
+#include "output.h"
+#include "string_formatter.h"
+#include "translations.h"
+#include "units.h"
+#include "units_fwd.h"
 
 bool trigdist;
+
+double iso_tangent( double distance, const units::angle &vertex )
+{
+    // we can use the cosine formula (a² = b² + c² - 2bc⋅cosθ) to calculate the tangent
+    return std::sqrt( 2 * std::pow( distance, 2 ) * ( 1 - cos( vertex ) ) );
+}
 
 void bresenham( const point &p1, const point &p2, int t,
                 const std::function<bool( const point & )> &interact )
@@ -22,8 +29,7 @@ void bresenham( const point &p1, const point &p2, int t,
     // The slope components.
     const point d = p2 - p1;
     // Signs of slope values.
-    const int sx = ( d.x == 0 ) ? 0 : sgn( d.x );
-    const int sy = ( d.y == 0 ) ? 0 : sgn( d.y );
+    const point s( ( d.x == 0 ) ? 0 : sgn( d.x ), ( d.y == 0 ) ? 0 : sgn( d.y ) );
     // Absolute values of slopes x2 to avoid rounding errors.
     const point a = d.abs() * 2;
 
@@ -31,8 +37,8 @@ void bresenham( const point &p1, const point &p2, int t,
 
     if( a.x == a.y ) {
         while( cur.x != p2.x ) {
-            cur.y += sy;
-            cur.x += sx;
+            cur.y += s.y;
+            cur.x += s.x;
             if( !interact( cur ) ) {
                 break;
             }
@@ -40,10 +46,10 @@ void bresenham( const point &p1, const point &p2, int t,
     } else if( a.x > a.y ) {
         while( cur.x != p2.x ) {
             if( t > 0 ) {
-                cur.y += sy;
+                cur.y += s.y;
                 t -= a.x;
             }
-            cur.x += sx;
+            cur.x += s.x;
             t += a.y;
             if( !interact( cur ) ) {
                 break;
@@ -52,10 +58,10 @@ void bresenham( const point &p1, const point &p2, int t,
     } else {
         while( cur.y != p2.y ) {
             if( t > 0 ) {
-                cur.x += sx;
+                cur.x += s.x;
                 t -= a.y;
             }
-            cur.y += sy;
+            cur.y += s.y;
             t += a.x;
             if( !interact( cur ) ) {
                 break;
@@ -68,37 +74,32 @@ void bresenham( const tripoint &loc1, const tripoint &loc2, int t, int t2,
                 const std::function<bool( const tripoint & )> &interact )
 {
     // The slope components.
-    const int dx = loc2.x - loc1.x;
-    const int dy = loc2.y - loc1.y;
-    const int dz = loc2.z - loc1.z;
+    const tripoint d( -loc1 + loc2 );
     // The signs of the slopes.
-    const int sx = ( dx == 0 ? 0 : sgn( dx ) );
-    const int sy = ( dy == 0 ? 0 : sgn( dy ) );
-    const int sz = ( dz == 0 ? 0 : sgn( dz ) );
+    const tripoint s( ( d.x == 0 ? 0 : sgn( d.x ) ), ( d.y == 0 ? 0 : sgn( d.y ) ),
+                      ( d.z == 0 ? 0 : sgn( d.z ) ) );
     // Absolute values of slope components, x2 to avoid rounding errors.
-    const int ax = std::abs( dx ) * 2;
-    const int ay = std::abs( dy ) * 2;
-    const int az = std::abs( dz ) * 2;
+    const tripoint a( std::abs( d.x ) * 2, std::abs( d.y ) * 2, std::abs( d.z ) * 2 );
 
     tripoint cur( loc1 );
 
-    if( az == 0 ) {
-        if( ax == ay ) {
+    if( a.z == 0 ) {
+        if( a.x == a.y ) {
             while( cur.x != loc2.x ) {
-                cur.y += sy;
-                cur.x += sx;
+                cur.y += s.y;
+                cur.x += s.x;
                 if( !interact( cur ) ) {
                     break;
                 }
             }
-        } else if( ax > ay ) {
+        } else if( a.x > a.y ) {
             while( cur.x != loc2.x ) {
                 if( t > 0 ) {
-                    cur.y += sy;
-                    t -= ax;
+                    cur.y += s.y;
+                    t -= a.x;
                 }
-                cur.x += sx;
-                t += ay;
+                cur.x += s.x;
+                t += a.y;
                 if( !interact( cur ) ) {
                     break;
                 }
@@ -106,95 +107,95 @@ void bresenham( const tripoint &loc1, const tripoint &loc2, int t, int t2,
         } else {
             while( cur.y != loc2.y ) {
                 if( t > 0 ) {
-                    cur.x += sx;
-                    t -= ay;
+                    cur.x += s.x;
+                    t -= a.y;
                 }
-                cur.y += sy;
-                t += ax;
+                cur.y += s.y;
+                t += a.x;
                 if( !interact( cur ) ) {
                     break;
                 }
             }
         }
     } else {
-        if( ax == ay && ay == az ) {
+        if( a.x == a.y && a.y == a.z ) {
             while( cur.x != loc2.x ) {
-                cur.z += sz;
-                cur.y += sy;
-                cur.x += sx;
+                cur.z += s.z;
+                cur.y += s.y;
+                cur.x += s.x;
                 if( !interact( cur ) ) {
                     break;
                 }
             }
-        } else if( ( az > ax ) && ( az > ay ) ) {
+        } else if( ( a.z > a.x ) && ( a.z > a.y ) ) {
             while( cur.z != loc2.z ) {
                 if( t > 0 ) {
-                    cur.x += sx;
-                    t -= az;
+                    cur.x += s.x;
+                    t -= a.z;
                 }
                 if( t2 > 0 ) {
-                    cur.y += sy;
-                    t2 -= az;
+                    cur.y += s.y;
+                    t2 -= a.z;
                 }
-                cur.z += sz;
-                t += ax;
-                t2 += ay;
+                cur.z += s.z;
+                t += a.x;
+                t2 += a.y;
                 if( !interact( cur ) ) {
                     break;
                 }
             }
-        } else if( ax == ay ) {
+        } else if( a.x == a.y ) {
             while( cur.x != loc2.x ) {
                 if( t > 0 ) {
-                    cur.z += sz;
-                    t -= ax;
+                    cur.z += s.z;
+                    t -= a.x;
                 }
-                cur.y += sy;
-                cur.x += sx;
-                t += az;
+                cur.y += s.y;
+                cur.x += s.x;
+                t += a.z;
                 if( !interact( cur ) ) {
                     break;
                 }
             }
-        } else if( ax == az ) {
+        } else if( a.x == a.z ) {
             while( cur.x != loc2.x ) {
                 if( t > 0 ) {
-                    cur.y += sy;
-                    t -= ax;
+                    cur.y += s.y;
+                    t -= a.x;
                 }
-                cur.z += sz;
-                cur.x += sx;
-                t += ax;
+                cur.z += s.z;
+                cur.x += s.x;
+                t += a.y;
                 if( !interact( cur ) ) {
                     break;
                 }
             }
-        } else if( ay == az ) {
+        } else if( a.y == a.z ) {
             while( cur.y != loc2.y ) {
                 if( t > 0 ) {
-                    cur.x += sx;
-                    t -= az;
+                    cur.x += s.x;
+                    t -= a.z;
                 }
-                cur.y += sy;
-                cur.z += sz;
-                t += az;
+                cur.y += s.y;
+                cur.z += s.z;
+                t += a.x;
                 if( !interact( cur ) ) {
                     break;
                 }
             }
-        } else if( ax > ay ) {
+        } else if( a.x > a.y ) {
             while( cur.x != loc2.x ) {
                 if( t > 0 ) {
-                    cur.y += sy;
-                    t -= ax;
+                    cur.y += s.y;
+                    t -= a.x;
                 }
                 if( t2 > 0 ) {
-                    cur.z += sz;
-                    t2 -= ax;
+                    cur.z += s.z;
+                    t2 -= a.x;
                 }
-                cur.x += sx;
-                t += ay;
-                t2 += az;
+                cur.x += s.x;
+                t += a.y;
+                t2 += a.z;
                 if( !interact( cur ) ) {
                     break;
                 }
@@ -202,16 +203,16 @@ void bresenham( const tripoint &loc1, const tripoint &loc2, int t, int t2,
         } else { //dy > dx >= dz
             while( cur.y != loc2.y ) {
                 if( t > 0 ) {
-                    cur.x += sx;
-                    t -= ay;
+                    cur.x += s.x;
+                    t -= a.y;
                 }
                 if( t2 > 0 ) {
-                    cur.z += sz;
-                    t2 -= ay;
+                    cur.z += s.z;
+                    t2 -= a.y;
                 }
-                cur.y += sy;
-                t += ax;
-                t2 += az;
+                cur.y += s.y;
+                t += a.x;
+                t2 += a.z;
                 if( !interact( cur ) ) {
                     break;
                 }
@@ -270,14 +271,9 @@ int manhattan_dist( const point &loc1, const point &loc2 )
     return d.x + d.y;
 }
 
-double atan2( const point &p )
+units::angle atan2( const point &p )
 {
-    return atan2( static_cast<double>( p.y ), static_cast<double>( p.x ) );
-}
-
-double atan2_degrees( const point &p )
-{
-    return atan2( p ) * 180.0 / M_PI;
+    return units::atan2( p.y, p.x );
 }
 
 // This more general version of this function gives correct values for larger values.
@@ -327,7 +323,7 @@ unsigned make_xyz( const tripoint &p )
 // returns the normalized dx, dy, dz for the current line vector.
 static std::tuple<double, double, double> slope_of( const std::vector<tripoint> &line )
 {
-    assert( !line.empty() && line.front() != line.back() );
+    cata_assert( !line.empty() && line.front() != line.back() );
     const double len = trig_dist( line.front(), line.back() );
     double normDx = ( line.back().x - line.front().x ) / len;
     double normDy = ( line.back().y - line.front().y ) / len;
@@ -384,8 +380,7 @@ direction direction_from( const point &p1, const point &p2 ) noexcept
 
 direction direction_from( const tripoint &p, const tripoint &q )
 {
-    // Note: Z-coordinate has to be inverted either here or in direction definitions
-    return direction_from( tripoint( q.x - p.x, q.y - p.y, -( q.z - p.z ) ) );
+    return direction_from( q - p );
 }
 
 point direction_XY( const direction dir )
@@ -474,7 +469,7 @@ std::string direction_name_impl( const direction dir, const bool short_name )
         return result;
     }();
 
-    auto i = static_cast<int>( dir );
+    int i = static_cast<int>( dir );
     if( i < 0 || i >= size ) {
         i = size;
     }
@@ -510,35 +505,33 @@ std::string direction_suffix( const tripoint &p, const tripoint &q )
 std::vector<tripoint> squares_closer_to( const tripoint &from, const tripoint &to )
 {
     std::vector<tripoint> adjacent_closer_squares;
-    const int dx = to.x - from.x;
-    const int dy = to.y - from.y;
-    const int dz = to.z - from.z;
-    const int ax = std::abs( dx );
-    const int ay = std::abs( dy );
-    if( dz != 0 ) {
-        adjacent_closer_squares.push_back( from + tripoint( sgn( dx ), sgn( dy ), sgn( dz ) ) );
+    adjacent_closer_squares.reserve( 5 );
+    const tripoint d( -from + to );
+    const point a( std::abs( d.x ), std::abs( d.y ) );
+    if( d.z != 0 ) {
+        adjacent_closer_squares.push_back( from + tripoint( sgn( d.x ), sgn( d.y ), sgn( d.z ) ) );
     }
-    if( ax > ay ) {
+    if( a.x > a.y ) {
         // X dominant.
-        adjacent_closer_squares.push_back( from + point( sgn( dx ), 0 ) );
-        adjacent_closer_squares.push_back( from + point( sgn( dx ), 1 ) );
-        adjacent_closer_squares.push_back( from + point( sgn( dx ), -1 ) );
-        if( dy != 0 ) {
-            adjacent_closer_squares.push_back( from + point( 0, sgn( dy ) ) );
+        adjacent_closer_squares.push_back( from + point( sgn( d.x ), 0 ) );
+        adjacent_closer_squares.push_back( from + point( sgn( d.x ), 1 ) );
+        adjacent_closer_squares.push_back( from + point( sgn( d.x ), -1 ) );
+        if( d.y != 0 ) {
+            adjacent_closer_squares.push_back( from + point( 0, sgn( d.y ) ) );
         }
-    } else if( ax < ay ) {
+    } else if( a.x < a.y ) {
         // Y dominant.
-        adjacent_closer_squares.push_back( from + point( 0, sgn( dy ) ) );
-        adjacent_closer_squares.push_back( from + point( 1, sgn( dy ) ) );
-        adjacent_closer_squares.push_back( from + point( -1, sgn( dy ) ) );
-        if( dx != 0 ) {
-            adjacent_closer_squares.push_back( from + point( sgn( dx ), 0 ) );
+        adjacent_closer_squares.push_back( from + point( 0, sgn( d.y ) ) );
+        adjacent_closer_squares.push_back( from + point( 1, sgn( d.y ) ) );
+        adjacent_closer_squares.push_back( from + point( -1, sgn( d.y ) ) );
+        if( d.x != 0 ) {
+            adjacent_closer_squares.push_back( from + point( sgn( d.x ), 0 ) );
         }
-    } else if( dx != 0 ) {
+    } else if( d.x != 0 ) {
         // Pure diagonal.
-        adjacent_closer_squares.push_back( from + point( sgn( dx ), sgn( dy ) ) );
-        adjacent_closer_squares.push_back( from + point( sgn( dx ), 0 ) );
-        adjacent_closer_squares.push_back( from + point( 0, sgn( dy ) ) );
+        adjacent_closer_squares.push_back( from + point( sgn( d.x ), sgn( d.y ) ) );
+        adjacent_closer_squares.push_back( from + point( sgn( d.x ), 0 ) );
+        adjacent_closer_squares.push_back( from + point( 0, sgn( d.y ) ) );
     }
 
     return adjacent_closer_squares;
@@ -551,6 +544,7 @@ std::vector<point> squares_in_direction( const point &p1, const point &p2 )
     int junk = 0;
     point center_square = line_to( p1, p2, junk )[0];
     std::vector<point> adjacent_squares;
+    adjacent_squares.reserve( 3 );
     adjacent_squares.push_back( center_square );
     if( p1.x == center_square.x ) {
         // Horizontally adjacent.
@@ -746,41 +740,41 @@ rl_vec3d rl_vec3d::operator/( const float rhs ) const
     return ret;
 }
 
-void calc_ray_end( int angle, const int range, const tripoint &p, tripoint &out )
+void calc_ray_end( units::angle angle, const int range, const tripoint &p, tripoint &out )
 {
     // forces input angle to be between 0 and 360, calculated from actual input
-    angle %= 360;
-    if( angle < 0 ) {
-        angle += 360;
+    angle = fmod( angle, 360_degrees );
+    if( angle < 0_degrees ) {
+        angle += 360_degrees;
     }
-    const double rad = DEGREES( angle );
     out.z = p.z;
     if( trigdist ) {
-        out.x = p.x + range * std::cos( rad );
-        out.y = p.y + range * std::sin( rad );
+        out.x = p.x + range * cos( angle );
+        out.y = p.y + range * sin( angle );
     } else {
         int mult = 0;
-        if( angle >= 135 && angle <= 315 ) {
+        if( angle >= 135_degrees && angle <= 315_degrees ) {
             mult = -1;
         } else {
             mult = 1;
         }
 
-        if( angle <= 45 || ( 135 <= angle && angle <= 215 ) || 315 < angle ) {
+        if( angle <= 45_degrees || ( 135_degrees <= angle && angle <= 215_degrees ) ||
+            315_degrees < angle ) {
             out.x = p.x + range * mult;
-            out.y = p.y + range * std::tan( rad ) * mult;
+            out.y = p.y + range * tan( angle ) * mult;
         } else {
-            out.x = p.x + range * 1 / std::tan( rad ) * mult;
+            out.x = p.x + range * 1 / tan( angle ) * mult;
             out.y = p.y + range * mult;
         }
     }
 }
 
-double coord_to_angle( const tripoint &a, const tripoint &b )
+units::angle coord_to_angle( const tripoint &a, const tripoint &b )
 {
-    double rad = atan2( b.y - a.y, b.x - a.x );
-    if( rad < 0 ) {
-        rad += 2 * M_PI;
+    units::angle rad = units::atan2( b.y - a.y, b.x - a.x );
+    if( rad < 0_degrees ) {
+        rad += 2_pi_radians;
     }
-    return rad * 180 / M_PI;
+    return rad;
 }

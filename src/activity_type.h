@@ -2,14 +2,14 @@
 #ifndef CATA_SRC_ACTIVITY_TYPE_H
 #define CATA_SRC_ACTIVITY_TYPE_H
 
-#include <string>
+#include <iosfwd>
 
 #include "game_constants.h"
 #include "string_id.h"
 #include "translations.h"
 
-class activity_type;
 class JsonObject;
+class activity_type;
 class player;
 class player_activity;
 
@@ -32,6 +32,7 @@ class activity_type
         activity_id id_;
         bool rooted_ = false;
         translation verb_ = to_translation( "THIS IS A BUG" );
+        bool interruptable_ = true;
         bool suspendable_ = true;
         based_on_type based_on_ = based_on_type::SPEED;
         bool no_resume_ = false;
@@ -46,6 +47,9 @@ class activity_type
         }
         bool rooted() const {
             return rooted_;
+        }
+        bool interruptable() const {
+            return interruptable_;
         }
         bool suspendable() const {
             return suspendable_;
@@ -74,6 +78,9 @@ class activity_type
          */
         bool valid_auto_needs() const {
             return auto_needs;
+        }
+        float exertion_level() const {
+            return activity_level;
         }
         void call_do_turn( player_activity *, player * ) const;
         /** Returns whether it had a finish function or not */

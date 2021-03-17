@@ -35,7 +35,7 @@
     "material": [ "acidchitin", "steel" ],
     "weight": "35 kg",
     "volume": "150 L",
-    "material_thickness": 6,
+    "material_thickness": 4,
     "environmental_protection": 7
   },
   {
@@ -124,7 +124,7 @@
     "description": "Decorative bones affixed to leather horse barding to invoke fear in bandits and raiders and traders all!  You could put this on a friendly horse.",
     "price": 45000,
     "price_postapoc": 3000,
-    "material": [ "bone", "leather" ],
+    "material": [ "leather" ],
     "weight": "17 kg",
     "volume": "150 L",
     "material_thickness": 6
@@ -156,7 +156,7 @@
     "symbol": "[",
     "looks_like": "dump_pouch",
     "color": "green",
-    "covers": [ "HANDS" ],
+    "covers": [ "hand_l", "hand_r" ],
     "coverage": 50,
     "encumbrance": 30,
     "warmth": 10,

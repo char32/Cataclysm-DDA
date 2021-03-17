@@ -1,8 +1,8 @@
 #if !defined(_MSC_VER)
-// the rewrite_vsnprintf function is explicitly defined for non-MS compilers in output.cpp
-
+#include <iosfwd>
 #include <string>
 
+// the rewrite_vsnprintf function is explicitly defined for non-MS compilers in output.cpp
 #include "catch/catch.hpp"
 #include "output.h"
 

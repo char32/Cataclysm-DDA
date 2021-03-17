@@ -1,54 +1,77 @@
 #ifndef CATA_SRC_STATS_TRACKER_H
 #define CATA_SRC_STATS_TRACKER_H
 
+#include <iosfwd>
 #include <memory>
 #include <set>
-#include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "calendar.h"
 #include "cata_variant.h"
 #include "event.h"
-#include "event_bus.h"
-#include "hash_utils.h"
+#include "event_subscriber.h"
+#include "optional.h"
 #include "string_id.h"
 
 class JsonIn;
 class JsonOut;
 class event_statistic;
 class event_transformation;
+namespace cata
+{
+struct range_hash;
+}  // namespace cata
+
 enum class monotonically : int;
 class score;
 class stats_tracker;
 
-// The stats_tracker is intended to keep a summary of events that have occured.
+// The stats_tracker is intended to keep a summary of events that have occurred.
 // For each event_type it stores an event_multiset.
-// Within the event_tracker, counts are kept.  The events are partitioned
-// according to their data (an event::data_type object, which is a map of keys
-// to values).
+// Within the event_tracker, the events are partitioned according to their data
+// (an event::data_type object, which is a map of keys to values).
+// Within each partition, an event_summary is stored, which contains the first
+// and last times such events were seen, and the number of them seen.
 // The stats_tracker can be queried in various ways to get summary statistics
-// about events that have occured.
+// about events that have occurred.
+
+struct event_summary {
+    event_summary();
+    event_summary( int c, time_point f, time_point l );
+
+    int count;
+    time_point first;
+    time_point last;
+
+    void add( const cata::event & );
+    void add( const event_summary & );
+
+    void serialize( JsonOut & ) const;
+    void deserialize( JsonIn & );
+};
 
 class event_multiset
 {
     public:
-        using counts_type = std::unordered_map<cata::event::data_type, int, cata::range_hash>;
+        using summaries_type =
+            std::unordered_map<cata::event::data_type, event_summary, cata::range_hash>;
 
         // Default constructor for deserialization deliberately uses invalid
         // type
         event_multiset() : type_( event_type::num_event_types ) {}
-        event_multiset( event_type type ) : type_( type ) {}
+        explicit event_multiset( event_type type ) : type_( type ) {}
 
         void set_type( event_type );
 
-        const counts_type &counts() const {
-            return counts_;
+        const summaries_type &counts() const {
+            return summaries_;
         }
 
         // count returns the number of events matching given criteria that have
-        // occured.
+        // occurred.
         // total returns the sum of some integer-valued field across every
         // event satisfying certain criteria.
         // maximum and minimum return the max and min respectively of some
@@ -67,15 +90,17 @@ class event_multiset
         int total( const std::string &field, const cata::event::data_type &criteria ) const;
         int minimum( const std::string &field ) const;
         int maximum( const std::string &field ) const;
+        cata::optional<summaries_type::value_type> first() const;
+        cata::optional<summaries_type::value_type> last() const;
 
         void add( const cata::event & );
-        void add( const counts_type::value_type & );
+        void add( const summaries_type::value_type & );
 
         void serialize( JsonOut & ) const;
         void deserialize( JsonIn & );
     private:
         event_type type_;
-        counts_type counts_;
+        summaries_type summaries_;
 };
 
 class base_watcher
@@ -144,6 +169,18 @@ class stats_tracker_state
 {
     public:
         virtual ~stats_tracker_state() = 0;
+        virtual const cata_variant &get_value() const = 0;
+};
+
+class stats_tracker_value_state : public stats_tracker_state
+{
+    public:
+};
+
+class stats_tracker_multiset_state : public stats_tracker_state
+{
+    public:
+        [[noreturn]] const cata_variant &get_value() const override;
 };
 
 class stats_tracker : public event_subscriber
@@ -158,7 +195,8 @@ class stats_tracker : public event_subscriber
 
         void add_watcher( event_type, event_multiset_watcher * );
         void add_watcher( const string_id<event_transformation> &, event_multiset_watcher * );
-        void add_watcher( const string_id<event_statistic> &, stat_watcher * );
+        // Returns the current value of the watched statistic
+        const cata_variant &add_watcher( const string_id<event_statistic> &, stat_watcher * );
 
         void unwatch( base_watcher * );
 
@@ -193,5 +231,7 @@ class stats_tracker : public event_subscriber
 
         std::unordered_set<string_id<score>> initial_scores;
 };
+
+stats_tracker &get_stats();
 
 #endif // CATA_SRC_STATS_TRACKER_H

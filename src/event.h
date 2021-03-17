@@ -5,10 +5,10 @@
 #include <array>
 #include <cstddef>
 #include <cstdlib>
-#include <functional>
+#include <iosfwd>
 #include <map>
-#include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 
 #include "calendar.h"
@@ -31,15 +31,27 @@ enum class event_type : int {
     avatar_moves,
     awakes_dark_wyrms,
     becomes_wanted,
+    broken_bone,
     broken_bone_mends,
     buries_corpse,
     causes_resonance_cascade,
+    // Eating is always consuming, but consuming also covers medication and
+    // fueling bionics
+    character_consumes_item,
+    character_eats_item,
+    character_forgets_spell,
     character_gains_effect,
     character_gets_headshot,
     character_heals_damage,
     character_kills_character,
     character_kills_monster,
+    character_learns_spell,
     character_loses_effect,
+    character_melee_attacks_character,
+    character_melee_attacks_monster,
+    character_ranged_attacks_character,
+    character_ranged_attacks_monster,
+    character_smashes_tile,
     character_takes_damage,
     character_triggers_trap,
     character_wakes_up,
@@ -49,11 +61,15 @@ enum class event_type : int {
     crosses_marloss_threshold,
     crosses_mutation_threshold,
     crosses_mycus_threshold,
+    cuts_tree,
     dermatik_eggs_hatch,
     dermatik_eggs_injected,
     destroys_triffid_grove,
     dies_from_asthma_attack,
     dies_from_drug_overdose,
+    dies_from_bleeding,
+    dies_from_hypovolemia,
+    dies_from_redcells_loss,
     dies_of_infection,
     dies_of_starvation,
     dies_of_thirst,
@@ -69,7 +85,9 @@ enum class event_type : int {
     gains_addiction,
     gains_mutation,
     gains_skill_level,
+    game_load,
     game_over,
+    game_save,
     game_start,
     installs_cbm,
     installs_faulty_cbm,
@@ -81,6 +99,7 @@ enum class event_type : int {
     player_fails_conduct,
     player_gets_achievement,
     player_levels_spell,
+    reads_book,
     releases_subspace_specimens,
     removes_cbm,
     seals_hazardous_material_sarcophagus,
@@ -90,6 +109,7 @@ enum class event_type : int {
     terminates_subspace_specimens,
     throws_up,
     triggers_alarm,
+    uses_debug_menu,
     num_event_types // last
 };
 
@@ -150,7 +170,7 @@ struct event_spec_character_item {
     };
 };
 
-static_assert( static_cast<int>( event_type::num_event_types ) == 67,
+static_assert( static_cast<int>( event_type::num_event_types ) == 85,
                "This static_assert is to remind you to add a specialization for your new "
                "event_type below" );
 
@@ -206,6 +226,15 @@ template<>
 struct event_spec<event_type::becomes_wanted> : event_spec_character {};
 
 template<>
+struct event_spec<event_type::broken_bone> {
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 2> fields = {{
+            { "character", cata_variant_type::character_id },
+            { "part", cata_variant_type::body_part },
+        }
+    };
+};
+
+template<>
 struct event_spec<event_type::broken_bone_mends> {
     static constexpr std::array<std::pair<const char *, cata_variant_type>, 2> fields = {{
             { "character", cata_variant_type::character_id },
@@ -226,6 +255,21 @@ struct event_spec<event_type::buries_corpse> {
 
 template<>
 struct event_spec<event_type::causes_resonance_cascade> : event_spec_empty {};
+
+template<>
+struct event_spec<event_type::character_consumes_item> : event_spec_character_item {};
+
+template<>
+struct event_spec<event_type::character_eats_item> : event_spec_character_item {};
+
+template<>
+struct event_spec<event_type::character_forgets_spell> {
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 2> fields = { {
+            { "character", cata_variant_type::character_id },
+            { "spell", cata_variant_type::spell_id }
+        }
+    };
+};
 
 template<>
 struct event_spec<event_type::character_gains_effect> {
@@ -268,10 +312,73 @@ struct event_spec<event_type::character_kills_character> {
 };
 
 template<>
+struct event_spec<event_type::character_learns_spell> {
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 2> fields = { {
+            { "character", cata_variant_type::character_id },
+            { "spell", cata_variant_type::spell_id }
+        }
+    };
+};
+
+template<>
 struct event_spec<event_type::character_loses_effect> {
     static constexpr std::array<std::pair<const char *, cata_variant_type>, 2> fields = {{
             { "character", cata_variant_type::character_id },
             { "effect", cata_variant_type::efftype_id },
+        }
+    };
+};
+
+template<>
+struct event_spec<event_type::character_melee_attacks_character> {
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 5> fields = {{
+            { "attacker", cata_variant_type::character_id },
+            { "weapon", cata_variant_type::itype_id },
+            { "hits", cata_variant_type::bool_ },
+            { "victim", cata_variant_type::character_id },
+            { "victim_name", cata_variant_type::string },
+        }
+    };
+};
+
+template<>
+struct event_spec<event_type::character_melee_attacks_monster> {
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 4> fields = {{
+            { "attacker", cata_variant_type::character_id },
+            { "weapon", cata_variant_type::itype_id },
+            { "hits", cata_variant_type::bool_ },
+            { "victim_type", cata_variant_type::mtype_id },
+        }
+    };
+};
+
+template<>
+struct event_spec<event_type::character_ranged_attacks_character> {
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 4> fields = {{
+            { "attacker", cata_variant_type::character_id },
+            { "weapon", cata_variant_type::itype_id },
+            { "victim", cata_variant_type::character_id },
+            { "victim_name", cata_variant_type::string },
+        }
+    };
+};
+
+template<>
+struct event_spec<event_type::character_ranged_attacks_monster> {
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 3> fields = {{
+            { "attacker", cata_variant_type::character_id },
+            { "weapon", cata_variant_type::itype_id },
+            { "victim_type", cata_variant_type::mtype_id },
+        }
+    };
+};
+
+template<>
+struct event_spec<event_type::character_smashes_tile> {
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 3> fields = {{
+            { "character", cata_variant_type::character_id },
+            { "terrain", cata_variant_type::ter_str_id },
+            { "furniture", cata_variant_type::furn_str_id },
         }
     };
 };
@@ -327,6 +434,9 @@ template<>
 struct event_spec<event_type::crosses_mycus_threshold> : event_spec_character {};
 
 template<>
+struct event_spec<event_type::cuts_tree> : event_spec_character {};
+
+template<>
 struct event_spec<event_type::dermatik_eggs_hatch> : event_spec_character {};
 
 template<>
@@ -346,6 +456,15 @@ struct event_spec<event_type::dies_from_drug_overdose> {
         }
     };
 };
+
+template<>
+struct event_spec<event_type::dies_from_bleeding> : event_spec_character {};
+
+template<>
+struct event_spec<event_type::dies_from_hypovolemia> : event_spec_character {};
+
+template<>
+struct event_spec<event_type::dies_from_redcells_loss> : event_spec_character {};
 
 template<>
 struct event_spec<event_type::dies_of_infection> : event_spec_character {};
@@ -436,10 +555,28 @@ struct event_spec<event_type::gains_skill_level> {
 };
 
 template<>
+struct event_spec<event_type::game_load> {
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 1> fields = {{
+            { "cdda_version", cata_variant_type::string },
+        }
+    };
+};
+
+template<>
 struct event_spec<event_type::game_over> {
-    static constexpr std::array<std::pair<const char *, cata_variant_type>, 2> fields = {{
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 3> fields = {{
             { "is_suicide", cata_variant_type::bool_ },
             { "last_words", cata_variant_type::string },
+            { "total_time_played", cata_variant_type::chrono_seconds },
+        }
+    };
+};
+
+template<>
+struct event_spec<event_type::game_save> {
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 2> fields = {{
+            { "time_since_load", cata_variant_type::chrono_seconds },
+            { "total_time_played", cata_variant_type::chrono_seconds },
         }
     };
 };
@@ -531,12 +668,16 @@ struct event_spec<event_type::player_gets_achievement> {
 
 template<>
 struct event_spec<event_type::player_levels_spell> {
-    static constexpr std::array<std::pair<const char *, cata_variant_type>, 2> fields = {{
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 3> fields = {{
+            { "character", cata_variant_type::character_id },
             { "spell", cata_variant_type::spell_id },
             { "new_level", cata_variant_type::int_ },
         }
     };
 };
+
+template<>
+struct event_spec<event_type::reads_book> : event_spec_character_item {};
 
 template<>
 struct event_spec<event_type::removes_cbm> {
@@ -579,6 +720,14 @@ struct event_spec<event_type::throws_up> : event_spec_character {};
 
 template<>
 struct event_spec<event_type::triggers_alarm> : event_spec_character {};
+
+template<>
+struct event_spec<event_type::uses_debug_menu> {
+    static constexpr std::array<std::pair<const char *, cata_variant_type>, 1> fields = {{
+            { "debug_menu_option", cata_variant_type::debug_menu_index },
+        }
+    };
+};
 
 template<event_type Type, typename IndexSequence>
 struct make_event_helper;

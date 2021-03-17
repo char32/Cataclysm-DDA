@@ -3,6 +3,7 @@
 #define CATA_SRC_MAP_EXTRAS_H
 
 #include <cstdint>
+#include <iosfwd>
 #include <string>
 #include <unordered_map>
 
@@ -14,8 +15,8 @@
 class JsonObject;
 class map;
 struct tripoint;
-template<typename T> struct enum_traits;
 template<typename T> class generic_factory;
+template<typename T> struct enum_traits;
 
 enum class map_extra_method : int {
     null = 0,

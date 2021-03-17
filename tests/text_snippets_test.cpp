@@ -1,5 +1,9 @@
+#include <new>
+
 #include "catch/catch.hpp"
+#include "optional.h"
 #include "text_snippets.h"
+#include "translations.h"
 
 TEST_CASE( "random_snippet_with_small_seed", "[text_snippets][rng]" )
 {

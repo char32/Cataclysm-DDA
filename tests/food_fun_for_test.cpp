@@ -1,13 +1,14 @@
 #include <cstdlib>
 #include <memory>
-#include <string>
 #include <utility>
 
 #include "avatar.h"
 #include "calendar.h"
 #include "catch/catch.hpp"
+#include "flag.h"
 #include "item.h"
 #include "itype.h"
+#include "npc.h"
 #include "player_helpers.h"
 #include "type_id.h"
 #include "units.h"
@@ -15,12 +16,6 @@
 
 static const bionic_id bio_taste_blocker( "bio_taste_blocker" );
 
-static const std::string flag_COLD( "COLD" );
-static const std::string flag_EATEN_COLD( "EATEN_COLD" );
-static const std::string flag_FELINE( "FELINE" );
-static const std::string flag_FROZEN( "FROZEN" );
-static const std::string flag_LUPINE( "LUPINE" );
-static const std::string flag_MELTS( "MELTS" );
 static const trait_id trait_THRESH_FELINE( "THRESH_FELINE" );
 static const trait_id trait_THRESH_LUPINE( "THRESH_LUPINE" );
 
@@ -74,6 +69,7 @@ TEST_CASE( "fun for food eaten while sick", "[fun_for][food][sick]" )
 TEST_CASE( "fun for rotten food", "[fun_for][food][rotten]" )
 {
     avatar dummy;
+    dummy.set_body();
     std::pair<int, int> actual_fun;
 
     GIVEN( "some rotten food" ) {
@@ -240,6 +236,7 @@ TEST_CASE( "fun for melted food", "[fun_for][food][melted]" )
 TEST_CASE( "fun for cat food", "[fun_for][food][cat][feline]" )
 {
     avatar dummy;
+    dummy.set_body();
     std::pair<int, int> actual_fun;
 
     GIVEN( "cat food" ) {
@@ -270,6 +267,7 @@ TEST_CASE( "fun for cat food", "[fun_for][food][cat][feline]" )
 TEST_CASE( "fun for dog food", "[fun_for][food][dog][lupine]" )
 {
     avatar dummy;
+    dummy.set_body();
     std::pair<int, int> actual_fun;
 
     GIVEN( "dog food" ) {
@@ -301,6 +299,7 @@ TEST_CASE( "fun for dog food", "[fun_for][food][dog][lupine]" )
 TEST_CASE( "fun for gourmand", "[fun_for][food][gourmand]" )
 {
     avatar dummy;
+    dummy.set_body();
     std::pair<int, int> actual_fun;
 
     GIVEN( "food that tastes good" ) {
@@ -404,6 +403,7 @@ TEST_CASE( "fun for food eaten too often", "[fun_for][food][monotony]" )
 TEST_CASE( "fun for bionic bio taste blocker", "[fun_for][food][bionic]" )
 {
     avatar dummy;
+    dummy.set_body();
     std::pair<int, int> actual_fun;
 
     GIVEN( "food that tastes bad" ) {
